@@ -9,6 +9,9 @@ import SettingsRow from "./settings-row";
 import SettingsSection from "./settings-section";
 
 type CreditBalance = {
+  planName: string;
+  planPrice: string;
+  unlimitedCredits: boolean;
   availableCredits: number;
   serviceOpenRouterAvailable: boolean;
 };
@@ -51,11 +54,17 @@ export default function AiCreditsSection() {
     <SettingsSection
       title="Billing"
       description="Your plan and Eclipse-funded AI credits.">
-        <SettingsRow
-          title="Free plan"
-          detail="$0 USD / month"
-          action={unavailableAction("View plans")} />
         {balance ? (
+          <SettingsRow
+            title={`${balance.planName} plan`}
+            detail={balance.planPrice}
+            action={unavailableAction("View plans")} />
+        ) : null}
+        {balance?.unlimitedCredits ? (
+          <SettingsRow
+            title="Credits available"
+            detail="Unlimited" />
+        ) : balance ? (
           <SettingsRow
             title="Credits available"
             detail={<>${(balance.availableCredits / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} USD</>}

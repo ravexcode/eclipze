@@ -141,11 +141,11 @@ export default function Sidebar(props: Props) {
 
                   if (isLocked) {
                     return (
-                      <span
+                      <Link
                         key={label.redirection}
-                        aria-disabled="true"
+                        href="/billing"
                         title="Requires a developer account"
-                        className="w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md text-foreground-off opacity-50 grayscale cursor-not-allowed select-none">
+                        className="w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md text-foreground-off opacity-50 grayscale hover:bg-background-focus/50 hover:opacity-80">
                         {label.icon}
 
                         {label.label}
@@ -154,7 +154,7 @@ export default function Sidebar(props: Props) {
                           size={13}
                           strokeWidth={1.8}
                           className="ml-auto" />
-                      </span>
+                      </Link>
                     );
                   }
 

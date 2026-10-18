@@ -62,6 +62,7 @@ export type AiCreditUsageWindow = {
 };
 
 export type AiCreditUsage = {
+  unlimitedCredits: boolean;
   availableCredits: number;
   monthlyAllowance: number;
   monthlyUsedCredits: number;

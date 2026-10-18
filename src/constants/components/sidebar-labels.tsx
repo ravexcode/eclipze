@@ -7,7 +7,7 @@ import {
   IconTarget
 } from "@tabler/icons-react";
 
-export type SelectedSection = "overview" | "inbox" | "issues" | "agents" | "projects" | "settings" | "erd";
+export type SelectedSection = "overview" | "inbox" | "issues" | "agents" | "projects" | "settings" | "erd" | "billing";
 
 const icon_size = 18; const icon_width = 2;
 

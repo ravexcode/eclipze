@@ -71,11 +71,14 @@ enum UserRole {
 }
 
 // Mirrors the plan keys in src/constants/plans.ts.
+// INSIDER and DEVELOPER are internal plans, assigned only directly in the database.
 enum UserPlan {
   FREE
   PLUS
   MAX
   TEAM
+  INSIDER
+  DEVELOPER
 }
 
 enum IssueType {

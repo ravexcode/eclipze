@@ -11,6 +11,7 @@ import {
   reserveAiCredits,
   usdToAiCredits,
 } from "@/lib/ai-credits";
+import { hasUnlimitedAiCredits } from "@/utils/plans";
 import { formatTimeUntil } from "@/utils/usage-limits";
 import { resolveAllowedCommand, createInstructionsDigest } from "@/lib/agent-runner";
 import { getOpenRouterCredential, getOpenRouterModels } from "@/lib/openrouter";
@@ -177,37 +178,40 @@ export async function POST(request: Request) {
     const selectedModel = models.find(item => item.id === runModel);
     if (!selectedModel) return badRequest("Choose an available OpenRouter model.");
 
-    const totalSkillCharacters = selectedSkills.reduce((total, skill) => total + skill.content.length, 0);
-    const estimatedInputTokens = Math.ceil((prompt.value.length + totalSkillCharacters + 40_000) / 2);
-    const estimatedUsd = (estimatedInputTokens * selectedModel.pricing.prompt) + (2_048 * selectedModel.pricing.completion);
-    creditReservation = Math.max(1, Math.ceil(usdToAiCredits(estimatedUsd) * 1.25));
+    // Unlimited plans skip the credit reservation, so their runs never reserve or spend credits.
+    if (!hasUnlimitedAiCredits(user.plan)) {
+      const totalSkillCharacters = selectedSkills.reduce((total, skill) => total + skill.content.length, 0);
+      const estimatedInputTokens = Math.ceil((prompt.value.length + totalSkillCharacters + 40_000) / 2);
+      const estimatedUsd = (estimatedInputTokens * selectedModel.pricing.prompt) + (2_048 * selectedModel.pricing.completion);
+      creditReservation = Math.max(1, Math.ceil(usdToAiCredits(estimatedUsd) * 1.25));
 
-    const wallet = await ensureAiCreditWallet(user.id);
-    const usageWindows = await getAiCreditUsageWindows({
-      userId: user.id,
-      plan: user.plan,
-      reservedCredits: wallet.reservedCredits,
-    });
-    const exhaustedWindow = findExhaustedUsageWindow(usageWindows);
+      const wallet = await ensureAiCreditWallet(user.id);
+      const usageWindows = await getAiCreditUsageWindows({
+        userId: user.id,
+        plan: user.plan,
+        reservedCredits: wallet.reservedCredits,
+      });
+      const exhaustedWindow = findExhaustedUsageWindow(usageWindows);
 
-    if (exhaustedWindow) {
-      const resetMessage = exhaustedWindow.resetAt
-        ? ` It resets in ${formatTimeUntil(exhaustedWindow.resetAt)}.`
-        : "";
+      if (exhaustedWindow) {
+        const resetMessage = exhaustedWindow.resetAt
+          ? ` It resets in ${formatTimeUntil(exhaustedWindow.resetAt)}.`
+          : "";
 
-      return NextResponse.json({
-        message: `You reached your ${exhaustedWindow.label} usage limit of ${exhaustedWindow.limitCredits} credits.${resetMessage}`,
-        usageWindow: exhaustedWindow,
-      }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
-    }
+        return NextResponse.json({
+          message: `You reached your ${exhaustedWindow.label} usage limit of ${exhaustedWindow.limitCredits} credits.${resetMessage}`,
+          usageWindow: exhaustedWindow,
+        }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
+      }
 
-    const availableCredits = wallet.balance - wallet.reservedCredits;
-    if (creditReservation > availableCredits) {
-      return NextResponse.json({
-        message: `This model needs up to ${creditReservation} credits reserved for a run. Your available balance is ${Math.max(0, availableCredits)} credits. ${user.plan === "FREE" ? "Choose a lower-cost model." : "Choose a lower-cost model or wait for your next monthly grant."}`,
-        availableCredits: Math.max(0, availableCredits),
-        requiredCredits: creditReservation,
-      }, { status: 402, headers: PRIVATE_NO_STORE_HEADERS });
+      const availableCredits = wallet.balance - wallet.reservedCredits;
+      if (creditReservation > availableCredits) {
+        return NextResponse.json({
+          message: `This model needs up to ${creditReservation} credits reserved for a run. Your available balance is ${Math.max(0, availableCredits)} credits. ${user.plan === "FREE" ? "Choose a lower-cost model." : "Choose a lower-cost model or wait for your next monthly grant."}`,
+          availableCredits: Math.max(0, availableCredits),
+          requiredCredits: creditReservation,
+        }, { status: 402, headers: PRIVATE_NO_STORE_HEADERS });
+      }
     }
   }
 

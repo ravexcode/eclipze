@@ -13,6 +13,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import prisma from "@/lib/prisma";
+import type { UserPlan, UserRole } from "@/types/user";
 
 const scryptAsync = promisify(scrypt);
 
@@ -95,8 +96,8 @@ export function serializeUser(user: {
   email: string;
   username: string | null;
   avatarUrl: string | null;
-  role: "USER" | "DEVELOPER";
-  plan: "FREE" | "PLUS" | "MAX" | "TEAM";
+  role: UserRole;
+  plan: UserPlan;
   emailVerifiedAt: Date | null;
   createdAt: Date;
 }) {

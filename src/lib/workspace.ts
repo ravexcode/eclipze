@@ -1,5 +1,7 @@
 import type {
   DashboardMetrics,
+  UserPlan,
+  UserRole,
   WorkspaceAgent,
   WorkspaceAgentSession,
   WorkspaceIssue,
@@ -18,8 +20,8 @@ type WorkspaceUser = {
   email: string;
   username: string | null;
   avatarUrl: string | null;
-  role: "USER" | "DEVELOPER";
-  plan: "FREE" | "PLUS" | "MAX" | "TEAM";
+  role: UserRole;
+  plan: UserPlan;
   emailVerifiedAt: Date | null;
   createdAt: Date;
 };

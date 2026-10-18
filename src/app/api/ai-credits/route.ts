@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ensureAiCreditWallet, getAiCreditUsageWindows } from "@/lib/ai-credits";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { formatPlanPrice, getSubscriptionPlan, hasUnlimitedAiCredits } from "@/utils/plans";
 
 const PRIVATE_NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -47,7 +48,12 @@ export async function GET() {
     reservedCredits: wallet.reservedCredits,
   });
 
+  const plan = getSubscriptionPlan(user.plan);
+
   return NextResponse.json({
+    planName: plan.name,
+    planPrice: formatPlanPrice(plan),
+    unlimitedCredits: hasUnlimitedAiCredits(user.plan),
     balance: wallet.balance,
     reservedCredits: wallet.reservedCredits,
     availableCredits: Math.max(0, wallet.balance - wallet.reservedCredits),

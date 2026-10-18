@@ -26,6 +26,7 @@ import { getOpenRouterModels } from "@/lib/openrouter";
 import prisma from "@/lib/prisma";
 import { ownedProject, parseBody } from "@/lib/workspace-api";
 import { isErdAgentProvider } from "@/utils/erd-agent";
+import { hasUnlimitedAiCredits } from "@/utils/plans";
 import { formatTimeUntil } from "@/utils/usage-limits";
 
 type AgentMessage = { role: "user" | "assistant"; content: string };
@@ -164,41 +165,44 @@ export async function POST(request: Request) {
       return erdJson({ message: "This agent's model is no longer available on OpenRouter." }, 400);
     }
 
-    const promptCharacters = messages.reduce((total, message) => total + message.content.length, 0)
-      + JSON.stringify(document.value).length
-      + ERD_AGENT_PROMPT_OVERHEAD_CHARACTERS;
-    const estimatedInputTokens = Math.ceil(promptCharacters / 2) * Math.ceil(ERD_AGENT_MAX_TOOL_CYCLES / 2);
-    const estimatedUsd = (estimatedInputTokens * selectedModel.pricing.prompt)
-      + (ERD_AGENT_ESTIMATED_OUTPUT_TOKENS * selectedModel.pricing.completion);
-    const requiredCredits = Math.max(1, Math.ceil(usdToAiCredits(estimatedUsd) * 1.25));
+    // Unlimited plans skip the credit reservation, so their messages never reserve or spend credits.
+    if (!hasUnlimitedAiCredits(user.plan)) {
+      const promptCharacters = messages.reduce((total, message) => total + message.content.length, 0)
+        + JSON.stringify(document.value).length
+        + ERD_AGENT_PROMPT_OVERHEAD_CHARACTERS;
+      const estimatedInputTokens = Math.ceil(promptCharacters / 2) * Math.ceil(ERD_AGENT_MAX_TOOL_CYCLES / 2);
+      const estimatedUsd = (estimatedInputTokens * selectedModel.pricing.prompt)
+        + (ERD_AGENT_ESTIMATED_OUTPUT_TOKENS * selectedModel.pricing.completion);
+      const requiredCredits = Math.max(1, Math.ceil(usdToAiCredits(estimatedUsd) * 1.25));
 
-    const wallet = await ensureAiCreditWallet(user.id);
-    const usageWindows = await getAiCreditUsageWindows({
-      userId: user.id,
-      plan: user.plan,
-      reservedCredits: wallet.reservedCredits,
-    });
-    const exhaustedWindow = findExhaustedUsageWindow(usageWindows);
+      const wallet = await ensureAiCreditWallet(user.id);
+      const usageWindows = await getAiCreditUsageWindows({
+        userId: user.id,
+        plan: user.plan,
+        reservedCredits: wallet.reservedCredits,
+      });
+      const exhaustedWindow = findExhaustedUsageWindow(usageWindows);
 
-    if (exhaustedWindow) {
-      const resetMessage = exhaustedWindow.resetAt
-        ? ` It resets in ${formatTimeUntil(exhaustedWindow.resetAt)}.`
-        : "";
+      if (exhaustedWindow) {
+        const resetMessage = exhaustedWindow.resetAt
+          ? ` It resets in ${formatTimeUntil(exhaustedWindow.resetAt)}.`
+          : "";
 
-      return erdJson({
-        message: `You reached your ${exhaustedWindow.label} usage limit of ${exhaustedWindow.limitCredits} credits.${resetMessage}`,
-      }, 429);
+        return erdJson({
+          message: `You reached your ${exhaustedWindow.label} usage limit of ${exhaustedWindow.limitCredits} credits.${resetMessage}`,
+        }, 429);
+      }
+
+      const reserved = await reserveAiCredits({ userId: user.id, runId: reservationId, credits: requiredCredits });
+
+      if (!reserved) {
+        return erdJson({
+          message: `This model needs up to ${requiredCredits} credits reserved per message. ${user.plan === "FREE" ? "Choose a lower-cost agent." : "Choose a lower-cost agent or wait for your next monthly grant."}`,
+        }, 402);
+      }
+
+      creditReservation = requiredCredits;
     }
-
-    const reserved = await reserveAiCredits({ userId: user.id, runId: reservationId, credits: requiredCredits });
-
-    if (!reserved) {
-      return erdJson({
-        message: `This model needs up to ${requiredCredits} credits reserved per message. ${user.plan === "FREE" ? "Choose a lower-cost agent." : "Choose a lower-cost agent or wait for your next monthly grant."}`,
-      }, 402);
-    }
-
-    creditReservation = requiredCredits;
   }
 
   let creditsSettled = false;

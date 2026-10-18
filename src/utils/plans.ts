@@ -1,9 +1,13 @@
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/plans";
+import { ALL_PLANS, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/plans";
 import type { UserPlan } from "@/types/user";
 
 export function formatPlanPrice(plan: Pick<SubscriptionPlan, "priceCents" | "billing">) {
   if (plan.billing === "free") {
     return "Free";
+  }
+
+  if (plan.billing === "internal") {
+    return "Included";
   }
 
   const price = (plan.priceCents / 100).toLocaleString("en-US", {
@@ -18,13 +22,19 @@ export function formatPlanPrice(plan: Pick<SubscriptionPlan, "priceCents" | "bil
 }
 
 export function getPlanName(plan: UserPlan) {
-  const subscriptionPlan = SUBSCRIPTION_PLANS.find(item => item.key === plan.toLowerCase());
-
-  return subscriptionPlan?.name ?? "Free";
+  return getSubscriptionPlan(plan).name;
 }
 
-export function getSubscriptionPlan(plan: UserPlan) {
-  return SUBSCRIPTION_PLANS.find(item => item.key === plan.toLowerCase()) ?? SUBSCRIPTION_PLANS[0];
+export function getSubscriptionPlan(plan: UserPlan): SubscriptionPlan {
+  return ALL_PLANS.find(item => item.key === plan.toLowerCase()) ?? SUBSCRIPTION_PLANS[0];
+}
+
+export function isInternalPlan(plan: UserPlan) {
+  return getSubscriptionPlan(plan).billing === "internal";
+}
+
+export function hasUnlimitedAiCredits(plan: UserPlan) {
+  return getSubscriptionPlan(plan).monthlyCredits === null;
 }
 
 export function getMonthStartUtc(date = new Date()) {

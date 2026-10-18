@@ -1,11 +1,19 @@
-import { requireAuthenticatedUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default async function AgentsLayout({
+import { requireAuthenticatedUser } from "@/lib/auth";
+import { canAccessErd } from "@/utils/erd";
+
+export default async function ErdLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireAuthenticatedUser();
+  const user = await requireAuthenticatedUser();
+
+  // Accounts without ERD access go to billing to see the options that unlock it.
+  if (!canAccessErd(user)) {
+    redirect("/billing");
+  }
 
   return children;
 }

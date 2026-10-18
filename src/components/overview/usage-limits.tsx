@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { AGENT_CREDITS_UPDATED_EVENT } from "@/constants/agent-events";
+import { USAGE_BAR_DEFAULT_CLASS } from "@/constants/usage-limits";
 import type { AiCreditUsage, AiCreditUsageWindow } from "@/types/ai";
 import { apiFetch } from "@/utils/api-fetch";
 import { readJson } from "@/utils/json-payload";
@@ -66,6 +67,8 @@ export default function UsageLimits() {
           className="text-xs text-foreground-off">
           Loading usage limits…
         </p>
+      ) : usage.unlimitedCredits ? (
+        <UnlimitedUsageRow />
       ) : (
         <div className="flex flex-col gap-4">
           {usage.usageWindows.map(window => (
@@ -110,6 +113,34 @@ function UsageWindowRow({ window }: { window: AiCreditUsageWindow }) {
           {resetLabel}
         </span>
       ) : null}
+    </div>
+  );
+}
+
+// Unlimited plans have no rolling windows, so one full bar replaces the per-window rows.
+function UnlimitedUsageRow() {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-4 text-xs">
+        <span className="font-medium text-foreground">Unlimited</span>
+        <span className="text-foreground-off">
+          No usage limits
+        </span>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-label="Unlimited credits available"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={100}
+        className="h-2 overflow-hidden rounded-full bg-background-focus">
+        <div className={`h-full w-full rounded-full ${USAGE_BAR_DEFAULT_CLASS}`} />
+      </div>
+
+      <span className="text-[10px] text-foreground-off">
+        Included with your plan
+      </span>
     </div>
   );
 }

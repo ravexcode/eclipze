@@ -18,7 +18,8 @@ import type {
   ErdRelationDraft,
   ErdTable,
 } from "@/types/erd";
-import type { UserRole } from "@/types/user";
+import type { UserPlan, UserRole } from "@/types/user";
+import { isInternalPlan } from "@/utils/plans";
 
 type Point = {
   x: number;
@@ -36,12 +37,13 @@ export type ErdRelationGeometry = {
 // Access
 
 // Any developer account can use ERD; the ERD agent spends the user's AI credits.
-export function canAccessErd(user: { role: UserRole } | null | undefined) {
+// Internal plans have full access regardless of the account role.
+export function canAccessErd(user: { role: UserRole; plan: UserPlan } | null | undefined) {
   if (!user) {
     return false;
   }
 
-  return user.role === "DEVELOPER";
+  return user.role === "DEVELOPER" || isInternalPlan(user.plan);
 }
 
 // Document editing

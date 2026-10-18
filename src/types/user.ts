@@ -40,7 +40,7 @@ export type UserProfile = {
 
 export type ProjectStatus = "ACTIVE" | "AT_RISK" | "COMPLETED";
 export type UserRole = "USER" | "DEVELOPER";
-export type UserPlan = "FREE" | "PLUS" | "MAX" | "TEAM";
+export type UserPlan = "FREE" | "PLUS" | "MAX" | "TEAM" | "INSIDER" | "DEVELOPER";
 export type IssueType = "BUG" | "FEATURE" | "SUPPORT";
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH";
 export type IssueStatus = "OPEN" | "IN_PROGRESS" | "WAITING_FOR_USER" | "RESOLVED" | "CLOSED";
@@ -138,6 +138,6 @@ export type User = {
   avatar: string;
   email: string;
   id: string;
-  role: "USER" | "DEVELOPER";
+  role: UserRole;
   plan: UserPlan;
 }

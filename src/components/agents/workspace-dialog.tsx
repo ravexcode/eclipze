@@ -14,6 +14,7 @@ import { readJson } from "@/utils/json-payload";
 type ProjectOption = { id: string; name: string };
 
 type CreditBalance = {
+  unlimitedCredits: boolean;
   availableCredits: number;
   reservedCredits: number;
 };
@@ -47,7 +48,7 @@ export default function WorkspaceDialog() {
         ]) as [
             { repositories?: WorkspaceRepository[] },
             { projects?: ProjectOption[] },
-            { availableCredits?: number; reservedCredits?: number },
+            { unlimitedCredits?: boolean; availableCredits?: number; reservedCredits?: number },
           ];
 
         if (cancelled) return;
@@ -69,6 +70,7 @@ export default function WorkspaceDialog() {
 
         if (creditsResponse.ok) {
           setCreditBalance({
+            unlimitedCredits: creditsPayload.unlimitedCredits === true,
             availableCredits: creditsPayload.availableCredits ?? 0,
             reservedCredits: creditsPayload.reservedCredits ?? 0,
           });
@@ -168,7 +170,11 @@ export default function WorkspaceDialog() {
               value={repositoryId} />
           </div>
 
-          {creditBalance ? (
+          {creditBalance?.unlimitedCredits ? (
+            <p className="rounded-md bg-background-focus px-3 py-2 text-xs text-foreground-off">
+              <span className="text-foreground">Unlimited</span> credits available
+            </p>
+          ) : creditBalance ? (
             <p className="rounded-md bg-background-focus px-3 py-2 text-xs text-foreground-off">
               <span className="text-foreground">{creditBalance.availableCredits}</span> credits available
               {creditBalance.reservedCredits > 0 ? ` · ${creditBalance.reservedCredits} reserved` : ""}

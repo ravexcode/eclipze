@@ -1,5 +1,4 @@
 import type { MenuSelectorOption } from "@/components/ui/menu-selector";
-import { SUBSCRIPTION_PLANS } from "@/constants/plans";
 import type {
   ErdCardinality,
   ErdColumnType,
@@ -37,8 +36,6 @@ export const ERD_COPY_FEEDBACK_MS = 1600;
 export const ERD_PROJECT_SEARCH_PARAM = "project";
 
 export const ERD_TOOLBAR_ICON_BUTTON_CLASSES = "rounded-md p-1.5 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
-
-export const ERD_UPGRADE_PLANS = SUBSCRIPTION_PLANS.filter(plan => plan.key !== "free");
 
 export const ERD_DEFAULT_VIEWPORT: ErdViewport = {
   x: 40,

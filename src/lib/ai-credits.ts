@@ -10,6 +10,7 @@ import {
 } from "@/constants/ai-credits";
 import type { AiCreditUsageWindow } from "@/types/ai";
 import type { UserPlan } from "@/types/user";
+import { getSubscriptionPlan } from "@/utils/plans";
 
 export const INITIAL_AI_CREDITS = 300;
 export const DEFAULT_MONTHLY_AI_CREDITS = 300;
@@ -301,6 +302,13 @@ export async function getAiCreditUsageWindows(input: {
     }];
   }
 
+  const planWindows = getSubscriptionPlan(input.plan).usageWindows;
+
+  // Unlimited plans have no rolling windows.
+  if (!planWindows) {
+    return [];
+  }
+
   const now = Date.now();
 
   return Promise.all(AI_CREDIT_USAGE_WINDOWS.map(async window => {
@@ -331,7 +339,7 @@ export async function getAiCreditUsageWindows(input: {
     return {
       key: window.key,
       label: window.label,
-      limitCredits: window.limitCredits,
+      limitCredits: planWindows[window.key],
       usedCredits: Math.abs(spend._sum.deltaCredits ?? 0) + input.reservedCredits,
       resetAt,
     };
