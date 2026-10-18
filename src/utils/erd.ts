@@ -1,4 +1,5 @@
 import {
+  ERD_ALLOWED_PLANS,
   ERD_COLUMN_ROW_HEIGHT,
   ERD_MAX_NAME_LENGTH,
   ERD_MAX_SCALE,
@@ -36,14 +37,18 @@ export type ErdRelationGeometry = {
 
 // Access
 
-// Any developer account can use ERD; the ERD agent spends the user's AI credits.
+// ERD is a paid developer tool: it needs a developer account on a paid plan.
 // Internal plans have full access regardless of the account role.
 export function canAccessErd(user: { role: UserRole; plan: UserPlan } | null | undefined) {
   if (!user) {
     return false;
   }
 
-  return user.role === "DEVELOPER" || isInternalPlan(user.plan);
+  if (isInternalPlan(user.plan)) {
+    return true;
+  }
+
+  return user.role === "DEVELOPER" && ERD_ALLOWED_PLANS.includes(user.plan);
 }
 
 // Document editing
