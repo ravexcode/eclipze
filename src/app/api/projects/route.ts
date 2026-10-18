@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { badRequest, enumString, parseBody, requiredString } from "@/lib/workspace-api";
+import { checkProjectLimit } from "@/lib/plan-limits";
 import { serializeProject } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
 
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
   const externalUrl = typeof body.externalUrl === "string" ? body.externalUrl.trim() || null : null;
   const status = enumString(body.status, PROJECT_STATUSES, "status", "ACTIVE");
   if (status.error) return status.error;
+
+  const limitMessage = await checkProjectLimit(user);
+  if (limitMessage) return NextResponse.json({ message: limitMessage }, { status: 403 });
 
   const project = await prisma.project.create({
     data: { userId: user.id, name: name.value, description, externalUrl, status: status.value },

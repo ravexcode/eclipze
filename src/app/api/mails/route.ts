@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, normalizeEmail } from "@/lib/auth";
+import { checkMonthlyMailLimit } from "@/lib/plan-limits";
 import { badRequest, parseBody, requiredString } from "@/lib/workspace-api";
 import prisma from "@/lib/prisma";
 
@@ -62,6 +63,11 @@ export async function POST(request: Request) {
   });
 
   if (!recipient) return badRequest("No verified user was found for that email or username.");
+
+  const limitMessage = await checkMonthlyMailLimit(user);
+  if (limitMessage) {
+    return NextResponse.json({ message: limitMessage }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
+  }
 
   const mail = await prisma.mail.create({
     data: {

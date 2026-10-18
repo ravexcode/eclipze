@@ -22,3 +22,11 @@ export function getPlanName(plan: UserPlan) {
 
   return subscriptionPlan?.name ?? "Free";
 }
+
+export function getSubscriptionPlan(plan: UserPlan) {
+  return SUBSCRIPTION_PLANS.find(item => item.key === plan.toLowerCase()) ?? SUBSCRIPTION_PLANS[0];
+}
+
+export function getMonthStartUtc(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}

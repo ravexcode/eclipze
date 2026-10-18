@@ -19,6 +19,11 @@ export type SubscriptionPlan = {
     fiveHourCredits: number;
     weeklyCredits: number;
   };
+  // null means unlimited.
+  limits: {
+    projects: number | null;
+    monthlyMails: number | null;
+  };
   stripePriceEnv: string | null;
   features: string[];
 };
@@ -38,9 +43,14 @@ export const SUBSCRIPTION_PLANS = [
       fiveHourCredits: 15,
       weeklyCredits: 75,
     },
+    limits: {
+      projects: 1,
+      monthlyMails: 25,
+    },
     stripePriceEnv: null,
     features: [
-      "Projects, issues, and messages",
+      "1 project, plus issues and messages",
+      "25 messages per month",
       "Bring your own AI provider keys",
       "$0.30 in AI credits in total, with no monthly reset",
     ],
@@ -59,9 +69,15 @@ export const SUBSCRIPTION_PLANS = [
       fiveHourCredits: 100,
       weeklyCredits: 500,
     },
+    limits: {
+      projects: 5,
+      monthlyMails: 300,
+    },
     stripePriceEnv: "STRIPE_PRICE_PLUS",
     features: [
       "Everything in Free",
+      "Up to 5 projects",
+      "300 messages per month",
       "$2 in monthly AI credits",
       "Higher 5-hour and weekly usage limits",
       "Credit top-ups",
@@ -81,9 +97,15 @@ export const SUBSCRIPTION_PLANS = [
       fiveHourCredits: 250,
       weeklyCredits: 1_250,
     },
+    limits: {
+      projects: null,
+      monthlyMails: 1_000,
+    },
     stripePriceEnv: "STRIPE_PRICE_MAX",
     features: [
       "Everything in Plus",
+      "Unlimited projects",
+      "1,000 messages per month",
       "$5 in monthly AI credits",
       "Access to advanced models",
       "Highest individual usage limits",
@@ -102,6 +124,10 @@ export const SUBSCRIPTION_PLANS = [
     usageWindows: {
       fiveHourCredits: 250,
       weeklyCredits: 1_250,
+    },
+    limits: {
+      projects: null,
+      monthlyMails: 1_000,
     },
     stripePriceEnv: "STRIPE_PRICE_TEAM",
     features: [
