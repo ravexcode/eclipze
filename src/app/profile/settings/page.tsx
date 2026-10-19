@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import DashLayout from "@/components/layouts/dash";
 import DangerZone from "@/components/settings/danger-zone";
-import DeveloperAccountSection from "@/components/settings/developer-account-section";
+import AccountRoleSection from "@/components/settings/account-role-section";
 import AiCreditsSection from "@/components/settings/ai-credits-section";
 import LegalAgreementsSection from "@/components/settings/legal-agreements-section";
 import PasswordSection from "@/components/settings/password-section";
@@ -61,7 +61,7 @@ export default function SettingsPage() {
                 onSaved={setUser} />
               <AiCreditsSection />
               <ProvidersSection />
-              <DeveloperAccountSection
+              <AccountRoleSection
                 user={user}
                 onChanged={setUser} />
               <LegalAgreementsSection />

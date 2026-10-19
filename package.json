@@ -15,7 +15,8 @@
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "developer:promote": "node --env-file=.env scripts/promote-developer.cjs"
+    "developer:promote": "node --env-file=.env scripts/promote-developer.cjs",
+    "developer:demote": "node --env-file=.env scripts/promote-developer.cjs --demote"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

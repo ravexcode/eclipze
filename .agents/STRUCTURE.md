@@ -281,6 +281,16 @@ Variants:
 
 ---
 
+## Roles
+
+`UserRole` is `USER` (shown as **Client**) or `DEVELOPER`. Users switch between them in Settings (`PUT /api/account/role`) or with `pnpm developer:promote <email>` / `pnpm developer:demote <email>`.
+
+- Developer adds workspace tools: issue status and priority triage in the user's own projects, and the ERD editor on paid plans.
+- No role grants internal access, logs, or access to other accounts. Issue queries stay scoped by `getIssueAccessFilter`.
+- The internal `DEVELOPER` plan is unrelated to the role.
+
+---
+
 ## Billing
 
 Payments use Stripe through a minimal REST client (`src/lib/stripe.ts`); no Stripe SDK is installed. Setup and behavior are documented in [docs/billing.md](../docs/billing.md).

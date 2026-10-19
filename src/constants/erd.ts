@@ -11,7 +11,7 @@ import type {
 import type { AiProvider } from "@/types/ai";
 import type { UserPlan } from "@/types/user";
 
-// Access: developer accounts on any paid plan.
+// Access: the Developer role on any paid plan.
 export const ERD_ALLOWED_PLANS: readonly UserPlan[] = ["PLUS", "MAX", "TEAM"];
 
 // Node geometry in canvas units, shared by table nodes and relation lines.

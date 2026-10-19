@@ -37,7 +37,7 @@ export type ErdRelationGeometry = {
 
 // Access
 
-// ERD is a paid developer tool: it needs a developer account on a paid plan.
+// ERD is a paid developer tool: it needs the Developer role on a paid plan.
 // Internal plans have full access regardless of the account role.
 export function canAccessErd(user: { role: UserRole; plan: UserPlan } | null | undefined) {
   if (!user) {

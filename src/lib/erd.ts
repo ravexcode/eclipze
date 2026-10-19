@@ -32,7 +32,7 @@ export function erdJson(body: Record<string, unknown>, status = 200) {
 
 export function erdAccessError(user: { role: UserRole; plan: UserPlan }) {
   if (!canAccessErd(user)) {
-    return erdJson({ message: "ERD requires a developer account on a paid plan." }, 403);
+    return erdJson({ message: "ERD requires the Developer role on a paid plan. Choose your role in Settings." }, 403);
   }
 
   return null;

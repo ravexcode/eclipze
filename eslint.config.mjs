@@ -19,8 +19,8 @@ export default defineConfig([
     },
   },
   {
-    // Tests run directly with `node --test` as CommonJS.
-    files: ["tests/**/*.cjs"],
+    // Tests and scripts run directly with Node as CommonJS.
+    files: ["tests/**/*.cjs", "scripts/**/*.cjs"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
       "@next/next/no-assign-module-variable": "off",

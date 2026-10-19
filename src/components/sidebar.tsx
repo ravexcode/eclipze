@@ -143,8 +143,8 @@ export default function Sidebar(props: Props) {
                     return (
                       <Link
                         key={label.redirection}
-                        href="/billing"
-                        title="Requires a developer account on a paid plan"
+                        href={props.user?.role === "DEVELOPER" ? "/billing" : "/profile/settings"}
+                        title="Requires the Developer role on a paid plan"
                         className="w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md text-foreground-off opacity-50 grayscale hover:bg-background-focus/50 hover:opacity-80">
                         {label.icon}
 
