@@ -6,7 +6,6 @@ import { MongoClient, type Document } from "mongodb";
 
 import {
   DATABASE_CONNECT_TIMEOUT_MS,
-  DATABASE_PROVIDER_LABELS,
   DATABASE_STATEMENT_TIMEOUT_MS,
   MONGODB_ALLOWED_COMMANDS,
   MONGODB_INSPECT_SAMPLE_SIZE,
@@ -16,8 +15,6 @@ import { getHostAddressStatus } from "@/lib/mcp-url";
 import type { DatabaseCredential, DatabaseProviderClient } from "@/lib/database-providers/types";
 import type { DatabaseSchemaTable } from "@/types/database-connections";
 import { readMongoSampleColumns, readMongoValidatorColumns } from "@/utils/database-connections";
-
-const LABEL = DATABASE_PROVIDER_LABELS.MONGODB;
 
 function readHosts(connectionString: string) {
   const match = /^mongodb(\+srv)?:\/\/(?:[^@/]*@)?([^/?]+)/.exec(connectionString);

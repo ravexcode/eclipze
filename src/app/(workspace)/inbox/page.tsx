@@ -61,7 +61,14 @@ export default function InboxPage() {
   }, [folder]);
 
   useEffect(() => {
-    loadMails(folder);
+    // Deferred so the loading state is not set synchronously inside the effect.
+    const timer = window.setTimeout(() => {
+      void loadMails(folder);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [folder, loadMails]);
 
   const selectedMail = mails.find(mail => mail.id === selectedId) ?? null;

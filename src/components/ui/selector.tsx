@@ -1,6 +1,6 @@
 "use client";
 
-import { IconChevronDown, IconSearch } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
 import type { AvailableModel } from "@/utils/agents";

@@ -78,6 +78,7 @@ function makeHarness({ user, issues = [] }) {
     issue: issueApi,
     project: {
       create: async ({ data }) => ({ id: "new-project", ...data }),
+      count: async () => 0,
       findFirst: async ({ where }) => where.userId === user?.id
         ? { id: where.id, userId: where.userId }
         : null,
@@ -343,7 +344,7 @@ test("issue PATCH returns 404 without notifications when project access is revok
 
 for (const role of ["USER", "DEVELOPER"]) {
   test(`${role} creates projects under their own account`, async () => {
-    const harness = makeHarness({ user: { id: "actor", role } });
+    const harness = makeHarness({ user: { id: "actor", role, plan: "FREE" } });
     const response = await harness.projectsRoute.POST(request({ name: "Private project", userId: "foreign-account" }));
     assert.equal(response.status, 201);
     assert.equal((await response.json()).project.userId, "actor");

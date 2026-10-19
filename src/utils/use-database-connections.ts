@@ -32,9 +32,18 @@ export function useDatabaseConnections(isEnabled: boolean) {
   }, []);
 
   useEffect(() => {
-    if (isEnabled) {
-      void refresh();
+    if (!isEnabled) {
+      return;
     }
+
+    // Deferred so the loading state is not set synchronously inside the effect.
+    const timer = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [isEnabled, refresh]);
 
   // Resolves to an error message, or null when the provider accepted the credential.

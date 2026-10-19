@@ -100,7 +100,14 @@ export default function AgentsGestor() {
   }, []);
 
   useEffect(() => {
-    load();
+    // Deferred so the loading state is not set synchronously inside the effect.
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [load]);
 
   const saveAgent = async (event: React.SubmitEvent<HTMLFormElement>) => {

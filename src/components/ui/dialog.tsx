@@ -21,12 +21,16 @@ export default function Dialog(props: Props) {
   const descriptionId = useId();
   const { isOpen, onClose } = props;
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(isOpen);
   const pressStartedOnBackdrop = useRef(false);
+
+  // Mount during render when opening, so the dialog never skips its enter frame.
+  if (isOpen && !isMounted) {
+    setIsMounted(true);
+  }
 
   useEffect(() => {
     if (isOpen) {
-      setIsMounted(true);
       return;
     }
 

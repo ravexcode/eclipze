@@ -195,14 +195,3 @@ export function formatDate(value: string) {
   return RUN_DATE_FORMATTER.format(date);
 }
 
-function statusColor(status: string) {
-  if (status === "COMPLETED" || status === "SUCCEEDED" || status === "ACTIVE") return "bg-status-green";
-  if (status === "FAILED" || status === "AT_RISK") return "bg-alert-red";
-  if (status === "CANCELLED") return "bg-warning";
-  return "bg-foreground-off";
-}
-
-function statusLabel(status: string) {
-  return status.replaceAll("_", " ").toLowerCase();
-}
-
