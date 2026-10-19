@@ -50,6 +50,8 @@ enum AiCreditEntryType {
   RESERVATION
   SPEND
   RELEASE
+  TOP_UP
+  PLAN_RESET
 }
 
 enum AgentPermissionMode {
@@ -190,6 +192,7 @@ model User {
   legalAcceptances      LegalAcceptance[]
   erdDiagrams           ErdDiagram[]
   databaseConnections   DatabaseConnection[]
+  billingAccount        BillingAccount?
 
   @@map("users")
 }
@@ -437,6 +440,9 @@ model AiCreditWallet {
   id                 String                @id @default(cuid())
   userId             String                @unique
   balance            Int                   @default(0)
+  // Part of balance bought as top-ups. Monthly plan credits are spent first, so this
+  // never exceeds balance and survives monthly resets and plan changes.
+  topUpCredits       Int                   @default(0)
   reservedCredits    Int                   @default(0)
   monthlyAllowance   Int                   @default(300)
   lastMonthlyGrantAt DateTime?
@@ -603,4 +609,31 @@ model DatabaseConnection {
   @@unique([userId, provider])
   @@index([userId])
   @@map("database_connections")
+}
+
+// Links a user to Stripe. User.plan stays the source of truth for entitlements and is
+// updated from Stripe webhooks.
+model BillingAccount {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  stripeCustomerId     String    @unique
+  stripeSubscriptionId String?   @unique
+  // Raw Stripe subscription status, such as active, past_due, or canceled.
+  subscriptionStatus   String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("billing_accounts")
+}
+
+// Stripe events already handled, so redelivered webhooks are skipped.
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+
+  @@map("stripe_webhook_events")
 }
