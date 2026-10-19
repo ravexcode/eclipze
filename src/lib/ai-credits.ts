@@ -46,7 +46,13 @@ async function ensureWalletInTransaction(transaction: Prisma.TransactionClient, 
   let lastGrant = wallet.lastMonthlyGrantAt ?? wallet.createdAt;
   let nextGrant = monthStartAfter(lastGrant);
   const now = new Date();
-  const user = await transaction.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  const user = await transaction.user.findUnique({
+    where: { id: userId },
+    select: {
+      plan: true,
+      billingAccount: { select: { stripeSubscriptionId: true } },
+    },
+  });
 
   // Free accounts keep only their initial grant. Advancing the grant date without crediting
   // prevents a later upgrade from back-filling the months spent on the Free plan.
@@ -66,45 +72,88 @@ async function ensureWalletInTransaction(transaction: Prisma.TransactionClient, 
     return wallet;
   }
 
+  const monthlyCredits = user ? getSubscriptionPlan(user.plan).monthlyCredits : null;
+
+  // Stripe subscriptions reset monthly credits from invoice webhooks at the start of each
+  // billing period, and unlimited plans have no balance to reset.
+  if (!user || user.billingAccount?.stripeSubscriptionId || monthlyCredits === null) {
+    return wallet;
+  }
+
+  // Paid plans assigned without a Stripe subscription reset on calendar months instead.
   while (nextGrant <= now) {
-    const month = `${nextGrant.getUTCFullYear()}-${String(nextGrant.getUTCMonth() + 1).padStart(2, "0")}`;
-    const idempotencyKey = `monthly:${userId}:${month}`;
-    const grantCredits = wallet.monthlyAllowance;
-
-    await transaction.aiCreditWallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: { increment: grantCredits },
-        lastMonthlyGrantAt: nextGrant,
-      },
-    });
-    await transaction.aiCreditLedgerEntry.create({
-      data: {
-        userId,
-        walletId: wallet.id,
-        type: "MONTHLY_GRANT",
-        deltaCredits: grantCredits,
-        idempotencyKey,
-        metadata: { grantMonth: month },
-      },
-    });
-
     lastGrant = nextGrant;
     nextGrant = monthStartAfter(lastGrant);
   }
 
-  if (lastGrant.getTime() !== wallet.lastMonthlyGrantAt?.getTime()) {
-    wallet = await transaction.aiCreditWallet.findUniqueOrThrow({ where: { id: wallet.id } });
+  if (lastGrant.getTime() === wallet.lastMonthlyGrantAt?.getTime()) {
+    return wallet;
   }
 
-  return wallet;
+  const month = `${lastGrant.getUTCFullYear()}-${String(lastGrant.getUTCMonth() + 1).padStart(2, "0")}`;
+
+  return resetMonthlyCreditsInTransaction(transaction, {
+    userId,
+    monthlyCredits,
+    type: "MONTHLY_GRANT",
+    idempotencyKey: `monthly:${userId}:${month}`,
+    grantedAt: lastGrant,
+    metadata: { grantMonth: month },
+  });
 }
 
-export async function ensureAiCreditWallet(userId: string) {
+// Replaces the monthly part of the balance with a new allowance. Monthly credits never
+// accumulate, and purchased top-up credits are kept.
+async function resetMonthlyCreditsInTransaction(
+  transaction: Prisma.TransactionClient,
+  input: {
+    userId: string;
+    monthlyCredits: number;
+    type: "MONTHLY_GRANT" | "PLAN_RESET";
+    idempotencyKey: string;
+    grantedAt: Date;
+    metadata?: Prisma.InputJsonObject;
+  },
+) {
+  const wallet = await transaction.aiCreditWallet.findUniqueOrThrow({ where: { userId: input.userId } });
+  const nextBalance = wallet.topUpCredits + input.monthlyCredits;
+
+  const entry = await transaction.aiCreditLedgerEntry.createMany({
+    data: [{
+      userId: input.userId,
+      walletId: wallet.id,
+      type: input.type,
+      deltaCredits: nextBalance - wallet.balance,
+      idempotencyKey: input.idempotencyKey,
+      metadata: {
+        ...input.metadata,
+        monthlyCredits: input.monthlyCredits,
+        topUpCredits: wallet.topUpCredits,
+      },
+    }],
+    skipDuplicates: true,
+  });
+
+  if (entry.count !== 1) {
+    return wallet;
+  }
+
+  return transaction.aiCreditWallet.update({
+    where: { id: wallet.id },
+    data: {
+      balance: nextBalance,
+      monthlyAllowance: input.monthlyCredits,
+      lastMonthlyGrantAt: input.grantedAt,
+    },
+  });
+}
+
+// Wallet changes run serializable and retry on conflicts with concurrent reservations.
+async function runWalletTransaction<T>(operation: (transaction: Prisma.TransactionClient) => Promise<T>) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       return await prisma.$transaction(
-        transaction => ensureWalletInTransaction(transaction, userId),
+        operation,
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
@@ -116,6 +165,84 @@ export async function ensureAiCreditWallet(userId: string) {
   }
 
   throw new Error("Unable to update the AI credit balance.");
+}
+
+export async function resetMonthlyAiCredits(input: {
+  userId: string;
+  plan: UserPlan;
+  idempotencyKey: string;
+  reason: string;
+}) {
+  const monthlyCredits = getSubscriptionPlan(input.plan).monthlyCredits;
+
+  // Unlimited plans have no balance to reset.
+  if (monthlyCredits === null) {
+    return;
+  }
+
+  // The Free plan has no monthly allowance after a paid subscription ends.
+  const allowance = input.plan === "FREE" ? 0 : monthlyCredits;
+
+  await runWalletTransaction(async transaction => {
+    await ensureWalletInTransaction(transaction, input.userId);
+
+    return resetMonthlyCreditsInTransaction(transaction, {
+      userId: input.userId,
+      monthlyCredits: allowance,
+      type: "PLAN_RESET",
+      idempotencyKey: input.idempotencyKey,
+      grantedAt: new Date(),
+      metadata: { plan: input.plan, reason: input.reason },
+    });
+  });
+}
+
+// Adds purchased credits. Returns false when the purchase was already credited.
+export async function grantTopUpCredits(input: {
+  userId: string;
+  credits: number;
+  amountUsd: number;
+  idempotencyKey: string;
+  metadata?: Prisma.InputJsonObject;
+}) {
+  if (!Number.isInteger(input.credits) || input.credits < 1) {
+    throw new Error("A positive top-up credit amount is required.");
+  }
+
+  return runWalletTransaction(async transaction => {
+    const wallet = await ensureWalletInTransaction(transaction, input.userId);
+
+    const entry = await transaction.aiCreditLedgerEntry.createMany({
+      data: [{
+        userId: input.userId,
+        walletId: wallet.id,
+        type: "TOP_UP",
+        deltaCredits: input.credits,
+        amountUsd: new Prisma.Decimal(input.amountUsd.toFixed(2)),
+        idempotencyKey: input.idempotencyKey,
+        metadata: input.metadata,
+      }],
+      skipDuplicates: true,
+    });
+
+    if (entry.count !== 1) {
+      return false;
+    }
+
+    await transaction.aiCreditWallet.update({
+      where: { id: wallet.id },
+      data: {
+        balance: { increment: input.credits },
+        topUpCredits: { increment: input.credits },
+      },
+    });
+
+    return true;
+  });
+}
+
+export async function ensureAiCreditWallet(userId: string) {
+  return runWalletTransaction(transaction => ensureWalletInTransaction(transaction, userId));
 }
 
 export async function createInitialAiCreditGrant(transaction: Prisma.TransactionClient, userId: string) {
@@ -196,6 +323,7 @@ export async function settleAiCreditReservation(input: {
 }) {
   const spentCredits = usdToAiCredits(input.costUsd);
 
+  // Monthly credits are spent first; top-up credits cover only what the rest of the balance cannot.
   await prisma.$transaction(async transaction => {
     const wallet = await transaction.aiCreditWallet.findUnique({ where: { userId: input.userId } });
     if (!wallet) throw new Error("AI credit wallet is unavailable.");
@@ -204,6 +332,7 @@ export async function settleAiCreditReservation(input: {
     const updated = await transaction.$executeRaw`
       UPDATE "ai_credit_wallets"
       SET "balance" = "balance" - ${spentCredits},
+          "topUpCredits" = GREATEST(0, LEAST("topUpCredits", "balance" - ${spentCredits})),
           "reservedCredits" = "reservedCredits" - ${input.reservedCredits},
           "updatedAt" = CURRENT_TIMESTAMP
       WHERE "userId" = ${input.userId}

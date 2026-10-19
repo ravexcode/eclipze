@@ -16,7 +16,13 @@ export async function GET() {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401, headers: PRIVATE_NO_STORE_HEADERS });
   }
 
-  const wallet = await ensureAiCreditWallet(user.id);
+  const [wallet, billingAccount] = await Promise.all([
+    ensureAiCreditWallet(user.id),
+    prisma.billingAccount.findUnique({
+      where: { userId: user.id },
+      select: { stripeSubscriptionId: true, currentPeriodEnd: true },
+    }),
+  ]);
   const entries = await prisma.aiCreditLedgerEntry.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
@@ -32,7 +38,10 @@ export async function GET() {
 
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthlyResetAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  // Stripe subscriptions reset at the end of their billing period; other plans on calendar months.
+  const monthlyResetAt = billingAccount?.stripeSubscriptionId && billingAccount.currentPeriodEnd
+    ? billingAccount.currentPeriodEnd
+    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const monthlySpend = await prisma.aiCreditLedgerEntry.aggregate({
     where: {
       userId: user.id,
@@ -56,6 +65,7 @@ export async function GET() {
     unlimitedCredits: hasUnlimitedAiCredits(user.plan),
     balance: wallet.balance,
     reservedCredits: wallet.reservedCredits,
+    topUpCredits: wallet.topUpCredits,
     availableCredits: Math.max(0, wallet.balance - wallet.reservedCredits),
     monthlyAllowance: user.plan === "FREE" ? 0 : wallet.monthlyAllowance,
     monthlyUsedCredits,

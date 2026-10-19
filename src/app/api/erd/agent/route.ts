@@ -197,7 +197,7 @@ export async function POST(request: Request) {
 
       if (!reserved) {
         return erdJson({
-          message: `This model needs up to ${requiredCredits} credits reserved per message. ${user.plan === "FREE" ? "Choose a lower-cost agent." : "Choose a lower-cost agent or wait for your next monthly grant."}`,
+          message: `This model needs up to ${requiredCredits} credits reserved per message. ${user.plan === "FREE" ? "Choose a lower-cost agent or upgrade your plan from Billing." : "Choose a lower-cost agent, buy a credit top-up from Billing, or wait for your next monthly grant."}`,
         }, 402);
       }
 
