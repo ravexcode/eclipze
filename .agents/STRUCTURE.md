@@ -281,21 +281,22 @@ Variants:
 
 ---
 
-## Placeholder Pages
+## Billing
 
-The following sections currently render minimal shells:
+Payments use Stripe through a minimal REST client (`src/lib/stripe.ts`); no Stripe SDK is installed. Setup and behavior are documented in [docs/billing.md](../docs/billing.md).
 
-- Issues
-- Mails
-- Agents
-- Projects
+Routes:
 
-Each consists of:
+- `GET /api/billing` (plan, subscription, credits, plan cards)
+- `POST /api/billing/checkout` (`{ plan }` for a subscription, `{ topUp }` for credits)
+- `POST /api/billing/portal` (Stripe customer portal)
+- `POST /api/billing/webhook` (Stripe signature, no session)
 
-- `DashLayout`
-- `Heading`
+Rules:
 
-Dashboard/Home currently display hardcoded empty-state content.
+- `User.plan` is the entitlement source of truth and is changed only by webhooks or directly in the database for internal plans.
+- Monthly credits reset each paid billing period and never accumulate; `topUpCredits` survives resets.
+- The Enterprise (`TEAM`) plan is listed as coming soon.
 
 ---
 

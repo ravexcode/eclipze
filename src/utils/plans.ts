@@ -1,5 +1,6 @@
 import { ALL_PLANS, SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/plans";
 import type { UserPlan } from "@/types/user";
+import { formatUsdCents } from "@/utils/billing";
 
 export function formatPlanPrice(plan: Pick<SubscriptionPlan, "priceCents" | "billing">) {
   if (plan.billing === "free") {
@@ -10,11 +11,7 @@ export function formatPlanPrice(plan: Pick<SubscriptionPlan, "priceCents" | "bil
     return "Included";
   }
 
-  const price = (plan.priceCents / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  });
+  const price = formatUsdCents(plan.priceCents);
 
   return plan.billing === "monthly_per_seat"
     ? `${price} / seat / month`

@@ -11,6 +11,8 @@ export type SubscriptionPlan = {
   description: string;
   priceCents: number;
   billing: "free" | "monthly" | "monthly_per_seat" | "internal";
+  // coming_soon plans are listed but cannot be purchased yet.
+  availability: "available" | "coming_soon";
   minimumSeats: number;
   // null means unlimited AI credits: no balance, reservation, or usage window applies.
   monthlyCredits: number | null;
@@ -38,6 +40,7 @@ export const SUBSCRIPTION_PLANS = [
     description: "Try Eclipze with a one-time AI allowance.",
     priceCents: 0,
     billing: "free",
+    availability: "available",
     minimumSeats: 1,
     monthlyCredits: 300,
     creditsScope: "user",
@@ -61,6 +64,7 @@ export const SUBSCRIPTION_PLANS = [
     description: "More AI credits and higher limits for individual work.",
     priceCents: 500,
     billing: "monthly",
+    availability: "available",
     minimumSeats: 1,
     monthlyCredits: 2_000,
     creditsScope: "user",
@@ -89,6 +93,7 @@ export const SUBSCRIPTION_PLANS = [
     description: "Advanced models and the highest individual limits.",
     priceCents: 1_200,
     billing: "monthly",
+    availability: "available",
     minimumSeats: 1,
     monthlyCredits: 5_000,
     creditsScope: "user",
@@ -117,6 +122,8 @@ export const SUBSCRIPTION_PLANS = [
     description: "Full access for teams, with shared credits and central billing.",
     priceCents: 1_500,
     billing: "monthly_per_seat",
+    // Team seats, member management, and the shared credit pool are not built yet.
+    availability: "coming_soon",
     minimumSeats: 5,
     monthlyCredits: 5_000,
     creditsScope: "team_pool",
@@ -147,6 +154,7 @@ export const INTERNAL_PLANS = [
     description: "Full access for Eclipze insiders.",
     priceCents: 0,
     billing: "internal",
+    availability: "available",
     minimumSeats: 1,
     monthlyCredits: null,
     creditsScope: "user",
@@ -169,6 +177,7 @@ export const INTERNAL_PLANS = [
     description: "Full access for the Eclipze development team.",
     priceCents: 0,
     billing: "internal",
+    availability: "available",
     minimumSeats: 1,
     monthlyCredits: null,
     creditsScope: "user",
