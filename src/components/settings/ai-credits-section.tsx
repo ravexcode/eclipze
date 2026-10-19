@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconExternalLink } from "@tabler/icons-react";
+import Link from "next/link";
+import { IconArrowRight } from "@tabler/icons-react";
 
 import { apiFetch } from "@/utils/api-fetch";
 import { readJson } from "@/utils/json-payload";
@@ -40,14 +41,13 @@ export default function AiCreditsSection() {
     };
   }, []);
 
-  const unavailableAction = (label: string) => (
-    <span
-      className="inline-flex items-center gap-1 text-foreground-off"
-      aria-disabled="true"
-      title="Billing options are not available yet">
+  const billingLink = (label: string, href: string) => (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 text-foreground-off transition-colors hover:text-foreground">
       {label}
-      <IconExternalLink size={13} strokeWidth={1.6} />
-    </span>
+      <IconArrowRight size={13} strokeWidth={1.6} />
+    </Link>
   );
 
   return (
@@ -58,7 +58,7 @@ export default function AiCreditsSection() {
           <SettingsRow
             title={`${balance.planName} plan`}
             detail={balance.planPrice}
-            action={unavailableAction("View plans")} />
+            action={billingLink("View plans", "/billing")} />
         ) : null}
         {balance?.unlimitedCredits ? (
           <SettingsRow
@@ -68,7 +68,7 @@ export default function AiCreditsSection() {
           <SettingsRow
             title="Credits available"
             detail={<>${(balance.availableCredits / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} USD</>}
-            action={unavailableAction("Get more")} />
+            action={billingLink("Get more", "/billing#top-ups")} />
         ) : error ? (
           <SettingsRow title="Credits available" action={<span className="text-alert-red">Unavailable</span>} />
         ) : (

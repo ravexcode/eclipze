@@ -83,14 +83,14 @@ export function clearSessionUser() {
   clearPrivateCaches();
 }
 
-/** Forces a fresh authenticated session read, useful when revalidating role. */
+/** Forces a fresh authenticated session read, useful when revalidating role or plan. */
 export function refreshSessionUser() {
   const previousUser = cachedUser;
   sessionVersion += 1;
   sessionRequest = null;
   cachedUser = undefined;
   return getSessionUser().then(user => {
-    if (previousUser && (!user || user.id !== previousUser.id || user.role !== previousUser.role)) {
+    if (previousUser && (!user || user.id !== previousUser.id || user.role !== previousUser.role || user.plan !== previousUser.plan)) {
       clearPrivateCaches();
     }
 

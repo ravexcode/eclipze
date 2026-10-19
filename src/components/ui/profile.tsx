@@ -11,6 +11,7 @@ import type { User } from "@/types/user";
 // Icons imports
 import {
   IconLogout,
+  IconCreditCard,
   IconSettings,
   IconUserCircle
 } from "@tabler/icons-react";
@@ -175,6 +176,14 @@ export default function UserProfile({ profile }: Props) {
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground">
               <IconSettings size={15} stroke={1.8} />
               Settings
+            </Link>
+            <Link
+              href="/billing"
+              role="menuitem"
+              onClick={() => setVisible(false)}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground">
+              <IconCreditCard size={15} stroke={1.8} />
+              Billing
             </Link>
             <button
               type="button"
