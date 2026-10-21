@@ -38,6 +38,7 @@
     "tailwind-animations": "^1.0.2"
   },
   "devDependencies": {
+    "@stripe/cli": "^1.54.1",
     "@tailwindcss/postcss": "^4.0.7",
     "@types/node": "20.17.6",
     "@types/pg": "^8.23.1",

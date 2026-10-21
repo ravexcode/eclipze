@@ -15,7 +15,7 @@ export default function PlanCard(props: {
 
   return (
     <article
-      className={`flex flex-col gap-4 rounded-md border bg-background-card p-4 ${option.isCurrent ? "border-accent" : "border-background-focus"}`}>
+      className={`flex flex-col gap-4 rounded-md text-sm bg-background-card p-4`}>
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-foreground">
@@ -23,20 +23,20 @@ export default function PlanCard(props: {
           </h3>
 
           {option.isCurrent ? (
-            <span className="rounded-sm bg-accent/20 px-1.5 py-0.5 text-[10px] text-foreground">
+            <span className="rounded-full bg-accent/20 px-3 py-1 text-xs text-foreground">
               Current
             </span>
           ) : null}
 
           {isComingSoon ? (
-            <span className="rounded-sm bg-background-focus px-1.5 py-0.5 text-[10px] text-foreground-off">
+            <span className="rounded-full bg-background-focus px-3 py-1 text-xs text-foreground-off">
               Coming soon
             </span>
           ) : null}
         </div>
 
         <p className="text-lg font-medium text-foreground">
-          {option.price}
+          {isComingSoon ? "Coming soon..." : option.price}
         </p>
 
         <p className="text-xs text-foreground-off">
@@ -64,7 +64,7 @@ export default function PlanCard(props: {
         variant={action.disabled ? "secondary" : "main"}
         disabled={action.disabled || props.isPending}
         onClick={props.onSelect}
-        className="w-full">
+        className="w-full h-8 cursor-pointer disabled:cursor-not-allowed disabled:brightness-75">
         {props.isPending ? "Opening…" : action.label}
       </Button>
     </article>
