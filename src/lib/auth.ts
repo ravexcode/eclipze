@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import prisma from "@/lib/prisma";
 import type { UserPlan, UserRole } from "@/types/user";
@@ -258,7 +259,8 @@ export async function clearSession() {
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-export async function getCurrentSession() {
+// Deduplicated per request so layouts, pages, and components share one session lookup
+export const getCurrentSession = cache(async () => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -304,7 +306,7 @@ export async function getCurrentSession() {
   }
 
   return session;
-}
+});
 
 export async function getCurrentUser() {
   const session = await getCurrentSession();

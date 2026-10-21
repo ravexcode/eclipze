@@ -16,7 +16,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "developer:promote": "node --env-file=.env scripts/promote-developer.cjs",
-    "developer:demote": "node --env-file=.env scripts/promote-developer.cjs --demote"
+    "developer:demote": "node --env-file=.env scripts/promote-developer.cjs --demote",
+    "stripe:setup": "node --env-file=.env scripts/setup-stripe.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
