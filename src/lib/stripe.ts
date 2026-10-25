@@ -30,8 +30,14 @@ function getSecretKey() {
   return process.env.STRIPE_SECRET_KEY?.trim() || null;
 }
 
+export function getStripePublishableKey() {
+  return process.env.STRIPE_PUBLISHABLE_KEY?.trim() || null;
+}
+
+// The in-app checkout needs both keys: the secret key creates sessions on the server and
+// the publishable key loads Stripe.js in the browser.
 export function isStripeConfigured() {
-  return Boolean(getSecretKey());
+  return Boolean(getSecretKey() && getStripePublishableKey());
 }
 
 export async function stripeRequest<T>(input: {
@@ -39,6 +45,7 @@ export async function stripeRequest<T>(input: {
   path: string;
   params?: StripeParams;
   idempotencyKey?: string;
+  apiVersion?: string;
 }): Promise<T> {
   const secretKey = getSecretKey();
 
@@ -53,7 +60,7 @@ export async function stripeRequest<T>(input: {
 
   const headers = new Headers({
     Authorization: `Bearer ${secretKey}`,
-    "Stripe-Version": STRIPE_API_VERSION,
+    "Stripe-Version": input.apiVersion ?? STRIPE_API_VERSION,
   });
 
   if (input.method === "POST") {

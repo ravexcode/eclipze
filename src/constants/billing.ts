@@ -4,6 +4,10 @@ export const STRIPE_API_URL = "https://api.stripe.com/v1";
 // From this version on, billing period dates live on subscription items.
 export const STRIPE_API_VERSION = "2025-03-31.basil";
 
+// Checkout Sessions for the in-app checkout must match the release train of Stripe.js
+// (@stripe/stripe-js 10 runs on endive), which also names the UI mode "elements".
+export const STRIPE_CHECKOUT_API_VERSION = "2026-09-30.endive";
+
 export const STRIPE_REQUEST_TIMEOUT_MS = 15_000;
 
 // Maximum age of a webhook signature timestamp, as recommended by Stripe.

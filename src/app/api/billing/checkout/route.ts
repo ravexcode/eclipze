@@ -6,9 +6,11 @@ import { BillingError, createSubscriptionCheckout, createTopUpCheckout } from "@
 import { getAppOrigin } from "@/lib/google-oauth";
 import { StripeRequestError } from "@/lib/stripe";
 import { parseBody } from "@/lib/workspace-api";
+import type { BillingCheckoutSession } from "@/types/billing";
 import type { UserPlan } from "@/types/user";
 
 // Starts a Stripe Checkout session for a new subscription ({ plan }) or a credit top-up ({ topUp }).
+// The response carries the client secret that the in-app checkout page mounts.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
@@ -20,16 +22,16 @@ export async function POST(request: Request) {
   const origin = getAppOrigin(request);
 
   try {
-    let url: string;
+    let checkout: BillingCheckoutSession;
 
     if (typeof body?.plan === "string") {
-      url = await createSubscriptionCheckout({
+      checkout = await createSubscriptionCheckout({
         user,
         plan: body.plan.toUpperCase() as UserPlan,
         origin,
       });
     } else if (typeof body?.topUp === "string") {
-      url = await createTopUpCheckout({
+      checkout = await createTopUpCheckout({
         user,
         topUpKey: body.topUp,
         origin,
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ message: "Checkout created.", url }, { headers: BILLING_PRIVATE_HEADERS });
+    return NextResponse.json({ message: "Checkout created.", ...checkout }, { headers: BILLING_PRIVATE_HEADERS });
   } catch (error) {
     if (error instanceof BillingError || error instanceof StripeRequestError) {
       return NextResponse.json({ message: error.message }, { status: error.status, headers: BILLING_PRIVATE_HEADERS });

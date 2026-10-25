@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   AI_CREDIT_TOP_UPS,
+  STRIPE_CHECKOUT_API_VERSION,
   STRIPE_CREDIT_RESET_BILLING_REASONS,
   STRIPE_ENTITLED_STATUSES,
 } from "@/constants/billing";
@@ -11,10 +12,13 @@ import prisma from "@/lib/prisma";
 import {
   getPlanForStripePrice,
   getStripePriceId,
+  getStripePublishableKey,
   isStripeConfigured,
   stripeRequest,
 } from "@/lib/stripe";
 import type {
+  BillingCheckoutSession,
+  BillingCheckoutSummary,
   BillingOverview,
   StripeBillingPortalSession,
   StripeCheckoutSession,
@@ -52,6 +56,35 @@ function hasEntitledStatus(status: string | null) {
   return status !== null && STRIPE_ENTITLED_STATUSES.includes(status);
 }
 
+function assertCheckoutConfigured() {
+  if (!isStripeConfigured()) {
+    throw new BillingError("Payments are not configured on this server.", 503);
+  }
+}
+
+function getCheckoutReturnUrl(origin: string) {
+  return `${origin}/billing?checkout=success`;
+}
+
+// The in-app checkout page loads Stripe.js with the publishable key and mounts the
+// payment form for this session with its client secret.
+function toBillingCheckoutSession(
+  session: StripeCheckoutSession,
+  summary: BillingCheckoutSummary,
+): BillingCheckoutSession {
+  const publishableKey = getStripePublishableKey();
+
+  if (!session.client_secret || !publishableKey) {
+    throw new BillingError("Unable to start checkout right now.", 502);
+  }
+
+  return {
+    clientSecret: session.client_secret,
+    publishableKey,
+    summary,
+  };
+}
+
 async function getOrCreateBillingAccount(user: BillingUser) {
   const existingAccount = await prisma.billingAccount.findUnique({ where: { userId: user.id } });
 
@@ -85,6 +118,8 @@ export async function createSubscriptionCheckout(input: {
   plan: UserPlan;
   origin: string;
 }) {
+  assertCheckoutConfigured();
+
   if (isInternalPlan(input.user.plan)) {
     throw new BillingError("Your plan is managed by the Eclipze team and cannot be changed here.", 409);
   }
@@ -112,13 +147,14 @@ export async function createSubscriptionCheckout(input: {
   const session = await stripeRequest<StripeCheckoutSession>({
     method: "POST",
     path: "/checkout/sessions",
+    apiVersion: STRIPE_CHECKOUT_API_VERSION,
     params: {
       mode: "subscription",
+      ui_mode: "elements",
       customer: account.stripeCustomerId,
       client_reference_id: input.user.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${input.origin}/billing?checkout=success`,
-      cancel_url: `${input.origin}/billing?checkout=cancelled`,
+      return_url: getCheckoutReturnUrl(input.origin),
       allow_promotion_codes: true,
       metadata: { userId: input.user.id, kind: "subscription" },
       subscription_data: {
@@ -127,11 +163,12 @@ export async function createSubscriptionCheckout(input: {
     },
   });
 
-  if (!session.url) {
-    throw new BillingError("Unable to start checkout right now.", 502);
-  }
-
-  return session.url;
+  return toBillingCheckoutSession(session, {
+    kind: "subscription",
+    title: `${plan.name} plan`,
+    description: plan.description,
+    features: [...plan.features],
+  });
 }
 
 export async function createTopUpCheckout(input: {
@@ -139,6 +176,8 @@ export async function createTopUpCheckout(input: {
   topUpKey: string;
   origin: string;
 }) {
+  assertCheckoutConfigured();
+
   const topUp = AI_CREDIT_TOP_UPS.find(option => option.key === input.topUpKey);
 
   if (!topUp) {
@@ -156,8 +195,10 @@ export async function createTopUpCheckout(input: {
   const session = await stripeRequest<StripeCheckoutSession>({
     method: "POST",
     path: "/checkout/sessions",
+    apiVersion: STRIPE_CHECKOUT_API_VERSION,
     params: {
       mode: "payment",
+      ui_mode: "elements",
       customer: account.stripeCustomerId,
       client_reference_id: input.user.id,
       line_items: [{
@@ -171,8 +212,7 @@ export async function createTopUpCheckout(input: {
         },
       }],
       invoice_creation: { enabled: true },
-      success_url: `${input.origin}/billing?checkout=success`,
-      cancel_url: `${input.origin}/billing?checkout=cancelled`,
+      return_url: getCheckoutReturnUrl(input.origin),
       metadata: {
         userId: input.user.id,
         kind: "top_up",
@@ -182,11 +222,15 @@ export async function createTopUpCheckout(input: {
     },
   });
 
-  if (!session.url) {
-    throw new BillingError("Unable to start checkout right now.", 502);
-  }
-
-  return session.url;
+  return toBillingCheckoutSession(session, {
+    kind: "top_up",
+    title: "AI credit top-up",
+    description: `${topUp.credits.toLocaleString("en-US")} credits added to your balance.`,
+    features: [
+      "Used after your monthly plan credits",
+      "Never expire",
+    ],
+  });
 }
 
 export async function createBillingPortalSession(input: {

@@ -23,6 +23,7 @@ export type StripeCustomer = {
 export type StripeCheckoutSession = {
   id: string;
   url: string | null;
+  client_secret: string | null;
   mode: "payment" | "setup" | "subscription";
   payment_status: "paid" | "unpaid" | "no_payment_required";
   amount_total: number | null;
@@ -100,6 +101,21 @@ export type BillingTopUpOption = {
   key: string;
   price: string;
   credits: number;
+};
+
+// Shape returned by POST /api/billing/checkout.
+
+export type BillingCheckoutSummary = {
+  kind: "subscription" | "top_up";
+  title: string;
+  description: string;
+  features: string[];
+};
+
+export type BillingCheckoutSession = {
+  clientSecret: string;
+  publishableKey: string;
+  summary: BillingCheckoutSummary;
 };
 
 export type BillingOverview = {

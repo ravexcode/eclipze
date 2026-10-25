@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { BillingOverview } from "@/types/billing";
 import { apiFetch } from "@/utils/api-fetch";
+import { getCheckoutPath } from "@/utils/checkout";
 import { errorMessage, readJson } from "@/utils/json-payload";
 import { getSessionUser, refreshSessionUser } from "@/utils/session";
 
@@ -19,6 +21,7 @@ function getActionKey(action: BillingAction) {
 }
 
 export function useBilling() {
+  const router = useRouter();
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -59,23 +62,26 @@ export function useBilling() {
     };
   }, [load]);
 
-  // Sends the browser to Stripe Checkout or the customer portal.
+  // Opens the in-app checkout for purchases, or sends the browser to the customer portal.
   const run = useCallback(async (action: BillingAction) => {
-    const path = action.type === "portal" ? "/api/billing/portal" : "/api/billing/checkout";
-    const body = action.type === "subscribe"
-      ? { plan: action.plan }
-      : action.type === "top_up"
-        ? { topUp: action.topUp }
-        : { flow: action.flow };
-
     setPendingAction(getActionKey(action));
     setError(null);
 
+    if (action.type === "subscribe") {
+      router.push(getCheckoutPath({ plan: action.plan }));
+      return;
+    }
+
+    if (action.type === "top_up") {
+      router.push(getCheckoutPath({ topUp: action.topUp }));
+      return;
+    }
+
     try {
-      const response = await apiFetch(path, {
+      const response = await apiFetch("/api/billing/portal", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ flow: action.flow }),
       }, { invalidatePrivateCache: false });
       const payload = await readJson(response) as { url?: string } | null;
 
@@ -88,7 +94,7 @@ export function useBilling() {
       setError(actionError instanceof Error ? actionError.message : "Unable to open billing right now.");
       setPendingAction(null);
     }
-  }, []);
+  }, [router]);
 
   return {
     overview,

@@ -23,6 +23,8 @@
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@prisma/client": "^6.19.3",
     "@prisma/config": "^7.10.0",
+    "@stripe/react-stripe-js": "7.0.0",
+    "@stripe/stripe-js": "10.1.0",
     "@tabler/icons-react": "^3.46.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/oidc": "^3.8.9",
