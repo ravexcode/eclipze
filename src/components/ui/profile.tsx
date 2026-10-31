@@ -124,7 +124,7 @@ export default function UserProfile({ profile }: Props) {
         <p
           className="w-full text-xs text-start">
           {profile.name} <br />
-          <span className={`mt-0.5 text-xs ${profile.plan === "FREE" ? "text-foreground" : "text-blue-500"}`}>
+          <span className={`mt-0.5 text-[0.7rem] ${profile.plan === "FREE" ? "text-foreground-off" : "text-blue-500"}`}>
             {getPlanName(profile.plan)} plan
           </span>
         </p>
