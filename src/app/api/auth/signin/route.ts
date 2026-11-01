@@ -12,6 +12,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { sendNewSignInEmail } from "@/lib/auth-email";
+import { sendEmailAfterResponse } from "@/lib/email-delivery";
 import { recordCurrentLegalAcceptance } from "@/lib/legal-acceptance";
 import { enforceRateLimits } from "@/lib/rate-limit";
 
@@ -72,12 +73,15 @@ export async function POST(request: Request) {
 
   await recordCurrentLegalAcceptance(user.id);
   await createSession(user.id);
-  void sendNewSignInEmail({
+  // Captured now, so the notice shows the sign-in time rather than the send time.
+  const signInNotice = {
     to: user.email,
     ip: getRequestIp(request),
     device: describeDevice(request.headers.get("user-agent")),
     occurredAt: new Date().toISOString(),
-  }).catch(() => undefined);
+  };
+
+  sendEmailAfterResponse("Sign-in notice", () => sendNewSignInEmail(signInNotice));
 
   return NextResponse.json({
     message: "Signed in successfully.",
