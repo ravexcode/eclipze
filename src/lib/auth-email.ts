@@ -3,17 +3,13 @@ import "server-only";
 import type { AuthCodePurpose } from "@/lib/auth";
 
 const emailTheme = {
-  background: "#010101",
-  surface: "#060606",
-  surfaceRaised: "#111111",
+  background: "#08090d",
+  surface: "#101116",
+  surfaceRaised: "#191a22",
   textPrimary: "#fafafa",
-  textSecondary: "#676767",
-  accent: "#000bde",
-  accentMuted: "#676767",
-  statusPurple: "#cb30e0",
-  statusCyan: "#00c0e8",
-  statusGreen: "#34c759",
-  alertRed: "#ff383c",
+  textSecondary: "#b4b5c0",
+  accent: "#7280ff",
+  accentMuted: "#42465f",
 };
 
 function escapeHtml(value: string) {
@@ -39,190 +35,98 @@ function getEmailCopy(purpose: AuthCodePurpose) {
   if (purpose === "EMAIL_VERIFICATION") {
     return {
       subject: "Verify your Eclipze account",
-      eyebrow: "Account setup",
       title: "Verify your email",
       body: "Use the verification code below to finish creating your Eclipze account and activate access to your workspace.",
-      statusLabel: "Email verification pending",
-      accentLabel: "Secure activation",
     };
   }
 
   return {
     subject: "Reset your Eclipze password",
-    eyebrow: "Password recovery",
     title: "Reset your password",
     body: "Use the verification code below to choose a new password for your Eclipze account.",
-    statusLabel: "Password reset requested",
-    accentLabel: "Secure recovery",
   };
 }
 
-function renderMiniGraph() {
-  const bars = [
-    { height: 18, color: emailTheme.accentMuted },
-    { height: 30, color: emailTheme.accent },
-    { height: 24, color: emailTheme.accentMuted },
-    { height: 42, color: emailTheme.accent },
-    { height: 28, color: emailTheme.accentMuted },
-    { height: 50, color: emailTheme.accent },
-    { height: 38, color: emailTheme.accentMuted },
-    { height: 58, color: emailTheme.accent },
-    { height: 32, color: emailTheme.accentMuted },
-    { height: 46, color: emailTheme.accent },
-    { height: 26, color: emailTheme.accentMuted },
-    { height: 36, color: emailTheme.accent },
-  ];
-
-  return `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
-      <tr>
-        ${bars.map((bar) => `
-          <td valign="bottom" style="padding: 0 3px; height: 64px;">
-            <div style="width: 12px; height: ${bar.height}px; border-radius: 3px; background: ${bar.color};"></div>
-          </td>
-        `).join("")}
-      </tr>
-    </table>
-  `;
-}
-
-function renderStatusDots() {
-  const dots = [emailTheme.statusPurple, emailTheme.statusCyan, emailTheme.statusGreen];
-
-  return dots.map((color) => `
-    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 999px; background: ${color}; margin-right: 8px;"></span>
-  `).join("");
-}
-
-function renderAuthEmailTemplate(input: {
+function renderSecurityEmailTemplate(input: {
   title: string;
-  eyebrow: string;
   body: string;
-  code: string;
-  statusLabel: string;
-  accentLabel: string;
+  details?: Array<{ label: string; value: string }>;
+  code?: string;
 }) {
+  const details = input.details?.map(({ label, value }) => `
+    <tr>
+      <td style="padding: 12px 0; border-bottom: 1px solid ${emailTheme.surfaceRaised}; color: ${emailTheme.textSecondary}; font-size: 13px;">${escapeHtml(label)}</td>
+      <td align="right" style="padding: 12px 0; border-bottom: 1px solid ${emailTheme.surfaceRaised}; color: ${emailTheme.textPrimary}; font-size: 13px; font-weight: 600;">${escapeHtml(value)}</td>
+    </tr>
+  `).join("") ?? "";
+
+  const codeSection = input.code ? `
+    <tr>
+      <td style="padding: 4px 28px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surfaceRaised}; border: 1px solid ${emailTheme.accentMuted}; border-radius: 12px;">
+          <tr>
+            <td style="padding: 22px 16px; text-align: center;">
+              <div style="font-size: 12px; line-height: 1.5; color: ${emailTheme.textSecondary}; margin-bottom: 12px;">YOUR ONE-TIME CODE</div>
+              <div style="font-family: 'SFMono-Regular', Consolas, monospace; font-size: 36px; line-height: 1.2; font-weight: 700; letter-spacing: 8px; color: ${emailTheme.textPrimary};">${escapeHtml(input.code)}</div>
+              <div style="font-size: 12px; line-height: 1.5; color: ${emailTheme.textSecondary}; margin-top: 12px;">This code expires in 10 minutes.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  ` : "";
+
+  const detailsSection = input.details ? `
+    <tr>
+      <td style="padding: 0 28px 24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${details}</table>
+      </td>
+    </tr>
+  ` : "";
+
   return `
     <!DOCTYPE html>
     <html lang="en">
       <head>
-        <meta charSet="UTF-8" />
+        <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${input.title}</title>
       </head>
-      <body style="margin: 0; padding: 0; background: ${emailTheme.background}; color: ${emailTheme.textPrimary}; font-family: 'Roboto Flex', Inter, Arial, sans-serif;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.background}; margin: 0; padding: 32px 16px;">
+      <body style="margin: 0; padding: 0; background: ${emailTheme.background}; color: ${emailTheme.textPrimary}; font-family: Arial, Helvetica, sans-serif;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.background}; margin: 0; padding: 40px 16px;">
           <tr>
             <td align="center">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 640px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 520px;">
                 <tr>
-                  <td style="padding-bottom: 20px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surface}; border: 1px solid ${emailTheme.surfaceRaised}; border-radius: 12px;">
+                  <td style="padding-bottom: 20px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: 2px; color: ${emailTheme.textPrimary};">ECLIPZE<span style="color: ${emailTheme.accent};">.</span></td>
+                </tr>
+                <tr>
+                  <td style="background: ${emailTheme.surface}; border: 1px solid ${emailTheme.surfaceRaised}; border-radius: 14px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="padding: 18px 22px; border-bottom: 1px solid ${emailTheme.surfaceRaised};">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr>
-                              <td align="left">
-                                <span style="display: inline-block; font-family: 'Roboto Mono', 'SFMono-Regular', Consolas, monospace; font-size: 12px; letter-spacing: 2px; color: ${emailTheme.textPrimary};">ECLIPZE</span>
-                              </td>
-                              <td align="right">
-                                <span style="display: inline-block; padding: 6px 10px; border-radius: 999px; background: ${emailTheme.surfaceRaised}; color: ${emailTheme.textSecondary}; font-size: 11px;">${input.eyebrow}</span>
-                              </td>
-                            </tr>
-                          </table>
+                        <td style="padding: 32px 28px 12px; font-size: 11px; line-height: 1.5; letter-spacing: 1.3px; color: ${emailTheme.accent};">ACCOUNT SECURITY</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 0 28px 12px;">
+                          <h1 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 700; color: ${emailTheme.textPrimary};">${escapeHtml(input.title)}</h1>
                         </td>
                       </tr>
-
                       <tr>
-                        <td style="padding: 28px 22px 14px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr>
-                              <td style="padding-bottom: 12px;">
-                                <div style="font-size: 12px; color: ${emailTheme.textSecondary}; letter-spacing: 0.4px; margin-bottom: 10px;">${input.statusLabel}</div>
-                                <h1 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 700; color: ${emailTheme.textPrimary};">${input.title}</h1>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="font-size: 15px; line-height: 1.7; color: ${emailTheme.textSecondary}; padding-bottom: 22px;">
-                                ${input.body}
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
+                        <td style="padding: 0 28px 24px; font-size: 15px; line-height: 1.7; color: ${emailTheme.textSecondary};">${escapeHtml(input.body)}</td>
                       </tr>
-
+                      ${codeSection}
+                      ${detailsSection}
                       <tr>
-                        <td style="padding: 0 22px 22px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surfaceRaised}; border: 1px solid ${emailTheme.accent}; border-radius: 12px;">
-                            <tr>
-                              <td style="padding: 20px 22px; text-align: center;">
-                                <div style="font-size: 12px; color: ${emailTheme.textSecondary}; margin-bottom: 12px;">${input.accentLabel}</div>
-                                <div style="font-family: 'Roboto Mono', 'SFMono-Regular', Consolas, monospace; font-size: 36px; line-height: 1; font-weight: 700; letter-spacing: 10px; color: ${emailTheme.textPrimary}; margin-bottom: 14px;">${input.code}</div>
-                                <div style="font-size: 12px; color: ${emailTheme.textSecondary};">This code expires in 10 minutes.</div>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding: 0 22px 24px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surfaceRaised}; border-radius: 12px;">
-                            <tr>
-                              <td style="padding: 20px 18px; text-align: center;">
-                                <div style="font-size: 12px; color: ${emailTheme.textSecondary}; margin-bottom: 14px;">Workspace activity signal</div>
-                                ${renderMiniGraph()}
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td style="padding: 0 22px 22px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                            <tr>
-                              <td width="50%" valign="top" style="padding-right: 8px;">
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surfaceRaised}; border-radius: 12px;">
-                                  <tr>
-                                    <td style="padding: 16px 18px;">
-                                      <div style="font-size: 13px; color: ${emailTheme.textPrimary}; margin-bottom: 8px;">Security</div>
-                                      <div style="font-size: 12px; line-height: 1.6; color: ${emailTheme.textSecondary};">
-                                        • One-time code<br />
-                                        • Expires in 10 minutes<br />
-                                        • Ignore this email if you did not request it
-                                      </div>
-                                    </td>
-                                  </tr>
-                                </table>
-                              </td>
-                              <td width="50%" valign="top" style="padding-left: 8px;">
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: ${emailTheme.surfaceRaised}; border: 1px solid ${emailTheme.alertRed}; border-radius: 12px;">
-                                  <tr>
-                                    <td style="padding: 16px 18px;">
-                                      <div style="font-size: 13px; color: ${emailTheme.textPrimary}; margin-bottom: 8px;">Notice</div>
-                                      <div style="font-size: 12px; line-height: 1.6; color: ${emailTheme.textSecondary}; margin-bottom: 10px;">
-                                        This mailbox does not receive replies.
-                                      </div>
-                                      <div style="font-size: 12px; color: ${emailTheme.textPrimary};">
-                                        ${renderStatusDots()}<span style="vertical-align: middle;">no-reply channel</span>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                </table>
-                              </td>
-                            </tr>
-                          </table>
+                        <td style="padding: 18px 28px; border-top: 1px solid ${emailTheme.surfaceRaised}; font-size: 12px; line-height: 1.6; color: ${emailTheme.textSecondary};">
+                          ${input.code ? "If you did not request this, you can safely ignore this email. Never share your code with anyone." : "If this was not you, reset your password immediately and contact support."}
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-
                 <tr>
-                  <td style="padding: 4px 12px 0; text-align: center; font-size: 12px; line-height: 1.7; color: ${emailTheme.textSecondary};">
-                    Sent by Eclipze security services.<br />
-                    For your safety, never share this code with anyone.
+                  <td style="padding: 20px 12px 0; text-align: center; font-size: 12px; line-height: 1.7; color: ${emailTheme.textSecondary};">
+                    Eclipze security notification<br />This is an automated message; replies are not monitored.
                   </td>
                 </tr>
               </table>
@@ -271,13 +175,10 @@ export async function sendAuthCodeEmail(input: {
       to: [input.to],
       reply_to: config.replyTo,
       subject: copy.subject,
-      html: renderAuthEmailTemplate({
+      html: renderSecurityEmailTemplate({
         title: copy.title,
-        eyebrow: copy.eyebrow,
         body: copy.body,
         code: input.code,
-        statusLabel: copy.statusLabel,
-        accentLabel: copy.accentLabel,
       }),
       text: renderPlainTextEmail({
         title: copy.title,
@@ -314,7 +215,15 @@ export async function sendNewSignInEmail(input: {
       reply_to: config.replyTo,
       subject: "New access to your profile",
       text: `ECLIPZE — New access to your profile\n\n${body}`,
-      html: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h1>New access to your profile</h1><p>A new sign-in to your Eclipze profile was detected.</p><ul><li><strong>IP address:</strong> ${ip}</li><li><strong>Device:</strong> ${device}</li><li><strong>Date and time (UTC):</strong> ${occurredAt}</li></ul><p>If this was not you, reset your password immediately and contact support.</p></div>`,
+      html: renderSecurityEmailTemplate({
+        title: "New access to your profile",
+        body: "A new sign-in to your Eclipze profile was detected. Review the details below.",
+        details: [
+          { label: "IP address", value: input.ip },
+          { label: "Device", value: input.device },
+          { label: "Date and time (UTC)", value: input.occurredAt },
+        ],
+      }),
     }),
   });
   if (!response.ok) throw new Error(`Resend request failed with ${response.status}`);
