@@ -6,6 +6,24 @@
       "sourceType": "github",
       "skillPath": "skills/cybersecurity-analyst/SKILL.md",
       "computedHash": "4f804565a002629ad80e311b460d710783af11bfddda5ddecee18c4b8f54cc0e"
+    },
+    "optimizing-database-connection-pooling": {
+      "source": "jeremylongshore/tons-of-skills-marketplace",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/optimizing-database-connection-pooling/SKILL.md",
+      "computedHash": "9b8bce51ba34fe25b31102e8db653570fd868ded62314eb1936cfa2c21e561dc"
+    },
+    "prisma-query-optimizer": {
+      "source": "nembie/claude-code-skills",
+      "sourceType": "github",
+      "skillPath": "skills/prisma-query-optimizer/SKILL.md",
+      "computedHash": "335505a1a5a8f33c445f076dd93d43d796dd595e3c117bd4769d34c8141b57c8"
+    },
+    "sql-performance": {
+      "source": "bateau84/skills",
+      "sourceType": "github",
+      "skillPath": "skills/sql-performance/SKILL.md",
+      "computedHash": "f89040795c84c5caba44f818d2c059b2ce166ac5bda0439909e239e3c6534133"
     }
   }
 }

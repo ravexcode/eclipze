@@ -1,0 +1,83 @@
+{
+  "skill": "sql-performance",
+  "version": "1.0.0",
+  "shape": 1,
+  "cases": [
+    {
+      "id": "SQLPerformance-01",
+      "name": "small-database-large-result",
+      "trap": "File size becomes a sharding trigger while an unbounded client result is the actual observed cost.",
+      "prompt": "A local SQLite database is 800 MB. A required full export fetches 700,000 rows with wide JSON payloads into one in-memory list. Measured query stepping takes 2 seconds; decoding and list construction take 18 seconds and process memory peaks at 3 GB. Indexed UI lookups meet their latency budget, and writers have no meaningful contention. We expect growth but want a practical improvement now. What would you change and measure? Should we shard now?",
+      "expectations": [
+        "Targets bounded full-result consumption, driver buffering, decoding/serialization and memory while preserving every required export row.",
+        "Defines a before/after comparison including full export time, peak process memory and correctness under an explicit consistency model.",
+        "Keeps the working simple design and records evidence-based future capacity/concurrency triggers."
+      ],
+      "negative_expectations": [
+        "Must not recommend sharding or partitioning solely because the file is 800 MB or growing.",
+        "Must not add LIMIT and call a truncated export an optimization.",
+        "Must not assume replacing the index or moving engines solves demonstrated decoding/materialization cost."
+      ]
+    },
+    {
+      "id": "SQLPerformance-02",
+      "name": "read-win-with-write-regression",
+      "trap": "A faster isolated SELECT and an index scan conceal unacceptable write and resource cost.",
+      "prompt": "On the same PostgreSQL version and representative dataset, a new covering index changes a report median from 70 ms to 55 ms. Both meet the agreed 100 ms target. At normal concurrent write load, measured write p95 rises from 35 ms to 110 ms against a 50 ms budget, and index storage grows by 500 MB. Result equivalence passed. The team calls this a successful optimization because EXPLAIN now says Index Only Scan. Assess the change and choose the next action.",
+      "expectations": [
+        "Rejects the overall success claim because the write budget regresses despite a read improvement.",
+        "Uses measured workload targets rather than plan-node preference to decide whether to keep or revise the index.",
+        "Proposes a bounded alternative or further diagnosis consistent with the existing evidence; can retain the original design."
+      ],
+      "negative_expectations": [
+        "Must not approve the index solely from the plan or read median.",
+        "Must not invent a missing benchmark or hide the write/storage trade-off."
+      ]
+    },
+    {
+      "id": "SQLPerformance-03",
+      "name": "safe-plan-only-investigation",
+      "trap": "An EXPLAIN-only request quietly becomes actual execution of side-effecting SQL.",
+      "prompt": "You may inspect schema and estimated plans in a production PostgreSQL database, but may not execute updates or side-effecting functions. Investigate WITH changed AS (UPDATE jobs SET attempt = nextval('attempt_seq') WHERE id = $1 RETURNING id) SELECT id FROM changed. A colleague suggests EXPLAIN (ANALYZE, BUFFERS) inside BEGIN/ROLLBACK so it is harmless. Provide the permitted investigation and how to get runtime evidence later.",
+      "expectations": [
+        "Keeps current investigation to permitted non-executing plan/schema inspection and identifies the data-modifying CTE.",
+        "Explains that ANALYZE executes the UPDATE and rollback does not restore sequence state or eliminate all effects.",
+        "Proposes runtime measurement in a suitable disposable representative environment or under separately established authority, and marks runtime speed unverified."
+      ],
+      "negative_expectations": [
+        "Must not execute or recommend executing the analyzed statement under the current production restriction.",
+        "Must not treat SELECT at the top level or ROLLBACK as a universal safety guarantee."
+      ]
+    },
+    {
+      "id": "SQLPerformance-04",
+      "name": "existing-evidence-is-enough-to-act",
+      "trap": "Generic instrumentation discipline adds an arbitrary day-long delay to a measured reproducible SQL problem.",
+      "prompt": "Use SQL performance guidance for a local PostgreSQL report. We already have repeatable full-result timings on a representative 600 MB copy, equality checks, current statistics, actual plans with spills in one sort, and observed app timings that locate the delay in that sort. No production mutation is requested. Explain the next bounded tuning experiment and verification; do we need to instrument production for another 24 hours before trying anything?",
+      "expectations": [
+        "Uses the sufficient existing diagnosis and proceeds with a bounded local experiment without an arbitrary monitoring delay.",
+        "Chooses a plausible change addressing the observed sort, such as an appropriate access path or scoped resource experiment, with relevant memory/write constraints.",
+        "Compares equivalent full results and repeated representative timings/resources rather than declaring a speedup in advance."
+      ],
+      "negative_expectations": [
+        "Must not require 4–24 hours of new production instrumentation merely because the generic performance skill says so.",
+        "Must not promise a speedup without running the experiment or recommend a blind global memory increase."
+      ]
+    },
+    {
+      "id": "SQLPerformance-05",
+      "name": "prepared-plan-skew-and-evidence-limits",
+      "trap": "Tiny literal tests and different parameter distributions masquerade as an application performance comparison.",
+      "prompt": "A PostgreSQL query through the application's prepared statements is slow for its largest tenant. A proposed rewrite was timed once with literal SQL for a tiny tenant on a warm developer database; it finished in 3 ms, and its estimated cost is lower. The old app query took 2 seconds in production. Can we report a 600x improvement? Give a concrete comparison plan.",
+      "expectations": [
+        "Rejects a quantified speedup because data, parameters, execution mode, environment and measurement scope are not comparable.",
+        "Includes representative small and large/skewed tenants, actual bind/prepared behavior, plan estimates versus observed rows, and full-result consumption.",
+        "Requires semantic equivalence and repeated comparable timing/resource evidence; clearly labels the rewrite as an unverified hypothesis."
+      ],
+      "negative_expectations": [
+        "Must not turn estimated cost or a single warm literal timing into measured application improvement.",
+        "Must not assume prepared and literal plans or selective and broad tenants have the same behavior."
+      ]
+    }
+  ]
+}
