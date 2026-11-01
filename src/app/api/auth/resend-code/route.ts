@@ -42,18 +42,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid resend request." }, { status: 400 });
   }
 
+  // Same answer whether or not the account exists or is verified, so this endpoint
+  // cannot be used to find out which emails are registered.
+  const genericResponse = NextResponse.json({
+    message: "If this email has an account waiting for verification, we sent a new code.",
+  });
+
   const user = await prisma.user.findUnique({
     where: {
       email,
     },
   });
 
-  if (!user) {
-    return NextResponse.json({ message: "No account was found for that email." }, { status: 404 });
-  }
-
-  if (purpose === "EMAIL_VERIFICATION" && user.emailVerifiedAt) {
-    return NextResponse.json({ message: "This email is already verified." }, { status: 400 });
+  if (!user || user.emailVerifiedAt) {
+    return genericResponse;
   }
 
   const verification = await createVerificationCode({
@@ -67,13 +69,10 @@ export async function POST(request: Request) {
       code: verification.code,
       purpose,
     });
-  } catch {
-    return NextResponse.json({
-      message: "Email delivery is not configured yet. Add RESEND_API_KEY and AUTH_EMAIL_FROM before resending codes.",
-    }, { status: 503 });
+  } catch (error) {
+    // Logged without the provider response, which can echo the recipient address.
+    console.error("[auth] Verification email could not be sent.", error instanceof Error ? error.name : "");
   }
 
-  return NextResponse.json({
-    message: "A new verification code was sent.",
-  });
+  return genericResponse;
 }

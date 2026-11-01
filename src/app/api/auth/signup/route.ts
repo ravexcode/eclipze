@@ -16,6 +16,42 @@ import {
 import { sendAuthCodeEmail } from "@/lib/auth-email";
 import { enforceRateLimits } from "@/lib/rate-limit";
 
+async function sendVerificationCode(userId: string, email: string) {
+  const verification = await createVerificationCode({
+    userId,
+    purpose: "EMAIL_VERIFICATION",
+  });
+
+  try {
+    await sendAuthCodeEmail({
+      to: email,
+      code: verification.code,
+      purpose: "EMAIL_VERIFICATION",
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createVerificationStepResponse(email: string, isSent: boolean) {
+  if (!isSent) {
+    return NextResponse.json({
+      message: "Account created, but email delivery is not configured yet. Add RESEND_API_KEY and AUTH_EMAIL_FROM, then resend the verification code.",
+      nextStep: "verify_email",
+      email,
+      warning: true,
+    }, { status: 202 });
+  }
+
+  return NextResponse.json({
+    message: "Account created. We sent a verification code to your email.",
+    nextStep: "verify_email",
+    email,
+  }, { status: 201 });
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as {
     email?: string;
@@ -64,15 +100,24 @@ export async function POST(request: Request) {
     prisma.user.findUnique({ where: { username } }),
   ]);
 
-  if (existingByEmail) {
-    return NextResponse.json({ message: "An account with that email already exists." }, { status: 409 });
-  }
-
-  if (existingByUsername) {
+  // Usernames are public, so a taken username can be reported directly.
+  if (existingByUsername && existingByUsername.id !== existingByEmail?.id) {
     return NextResponse.json({ message: "That username is already taken." }, { status: 409 });
   }
 
+  // Hashed on every path, so a known email takes as long to answer as a new one.
   const passwordHash = await hashPassword(password);
+
+  if (existingByEmail) {
+    // Answer exactly like a new sign-up, so this endpoint does not reveal which emails
+    // have accounts. An unverified owner gets a fresh code to finish verification.
+    if (existingByEmail.emailVerifiedAt) {
+      return createVerificationStepResponse(email, true);
+    }
+
+    const isSent = await sendVerificationCode(existingByEmail.id, email);
+    return createVerificationStepResponse(email, isSent);
+  }
 
   const user = await prisma.$transaction(async transaction => {
     const createdUser = await transaction.user.create({
@@ -87,29 +132,6 @@ export async function POST(request: Request) {
     return createdUser;
   });
 
-  const verification = await createVerificationCode({
-    userId: user.id,
-    purpose: "EMAIL_VERIFICATION",
-  });
-
-  try {
-    await sendAuthCodeEmail({
-      to: email,
-      code: verification.code,
-      purpose: "EMAIL_VERIFICATION",
-    });
-
-    return NextResponse.json({
-      message: "Account created. We sent a verification code to your email.",
-      nextStep: "verify_email",
-      email,
-    }, { status: 201 });
-  } catch {
-    return NextResponse.json({
-      message: "Account created, but email delivery is not configured yet. Add RESEND_API_KEY and AUTH_EMAIL_FROM, then resend the verification code.",
-      nextStep: "verify_email",
-      email,
-      warning: true,
-    }, { status: 202 });
-  }
+  const isSent = await sendVerificationCode(user.id, email);
+  return createVerificationStepResponse(email, isSent);
 }

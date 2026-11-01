@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { DUMMY_PASSWORD_HASH } from "@/constants/auth";
 import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import {
@@ -48,6 +49,10 @@ export async function POST(request: Request) {
   });
 
   if (!user?.passwordHash) {
+    // Spend the same hashing time as a real check, so response time does not reveal
+    // whether the email has a password account.
+    await verifyPassword(password, DUMMY_PASSWORD_HASH);
+
     return NextResponse.json({ message: "Invalid email or password." }, { status: 401 });
   }
 
