@@ -24,39 +24,43 @@ export async function GET() {
       select: { stripeSubscriptionId: true, currentPeriodEnd: true },
     }),
   ]);
-  const entries = await prisma.aiCreditLedgerEntry.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-    select: {
-      id: true,
-      type: true,
-      deltaCredits: true,
-      amountUsd: true,
-      createdAt: true,
-    },
-  });
-
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   // Stripe subscriptions reset at the end of their billing period; other plans on calendar months.
   const monthlyResetAt = billingAccount?.stripeSubscriptionId && billingAccount.currentPeriodEnd
     ? billingAccount.currentPeriodEnd
     : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const monthlySpend = await prisma.aiCreditLedgerEntry.aggregate({
-    where: {
+
+  // These reads run after the wallet exists, so a first visit also lists the initial grant.
+  // They do not depend on each other, so they run in parallel.
+  const [entries, monthlySpend, usageWindows] = await Promise.all([
+    prisma.aiCreditLedgerEntry.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        type: true,
+        deltaCredits: true,
+        amountUsd: true,
+        createdAt: true,
+      },
+    }),
+    prisma.aiCreditLedgerEntry.aggregate({
+      where: {
+        userId: user.id,
+        type: "SPEND",
+        createdAt: { gte: monthStart },
+      },
+      _sum: { deltaCredits: true },
+    }),
+    getAiCreditUsageWindows({
       userId: user.id,
-      type: "SPEND",
-      createdAt: { gte: monthStart },
-    },
-    _sum: { deltaCredits: true },
-  });
+      plan: user.plan,
+      reservedCredits: wallet.reservedCredits,
+    }),
+  ]);
   const monthlyUsedCredits = Math.abs(monthlySpend._sum.deltaCredits ?? 0) + wallet.reservedCredits;
-  const usageWindows = await getAiCreditUsageWindows({
-    userId: user.id,
-    plan: user.plan,
-    reservedCredits: wallet.reservedCredits,
-  });
 
   const plan = getSubscriptionPlan(user.plan);
 
