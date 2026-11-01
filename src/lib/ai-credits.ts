@@ -448,21 +448,17 @@ export async function getAiCreditUsageWindows(input: {
       createdAt: { gte: windowStart },
     };
 
-    const [spend, oldestSpend] = await Promise.all([
-      prisma.aiCreditLedgerEntry.aggregate({
-        where: spendFilter,
-        _sum: { deltaCredits: true },
-      }),
-      prisma.aiCreditLedgerEntry.findFirst({
-        where: spendFilter,
-        orderBy: { createdAt: "asc" },
-        select: { createdAt: true },
-      }),
-    ]);
+    // One aggregate returns both the total spend and the oldest spend in the window.
+    const spend = await prisma.aiCreditLedgerEntry.aggregate({
+      where: spendFilter,
+      _sum: { deltaCredits: true },
+      _min: { createdAt: true },
+    });
+    const oldestSpendAt = spend._min.createdAt;
 
     // Rolling window: capacity returns when the oldest spend in the window ages out.
-    const resetAt = oldestSpend
-      ? new Date(oldestSpend.createdAt.getTime() + window.durationMs).toISOString()
+    const resetAt = oldestSpendAt
+      ? new Date(oldestSpendAt.getTime() + window.durationMs).toISOString()
       : null;
 
     return {
