@@ -1,9 +1,12 @@
-const TLS_REQUIRED_SSL_MODES = new Set(["require", "verify-ca", "verify-full"]);
-const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+import {
+  LOCAL_DATABASE_HOSTS,
+  TLS_REQUIRED_SSL_MODES,
+} from "@/constants/database-url";
 
 /**
  * True when a PostgreSQL URL forces TLS, or points at the local machine or a
- * single-label host such as a Docker Compose service ("db"), where TLS is not needed. Returns true for URLs it cannot parse, so it never blocks startup.
+ * single-label host such as a Docker Compose service ("db"), where TLS is not needed.
+ * Returns true for URLs it cannot parse, so it never blocks startup.
  */
 export function isDatabaseUrlTlsEnforced(databaseUrl: string) {
   let url: URL;
