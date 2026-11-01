@@ -10,6 +10,7 @@ import type {
 } from "@/types/user";
 import { serializeUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { serializeMailUser } from "@/utils/mail";
 
 function iso(value: Date | null) {
   return value?.toISOString() ?? null;
@@ -185,9 +186,11 @@ export async function getWorkspaceSnapshot(user: WorkspaceUser): Promise<Workspa
     agents: agents.map(serializeAgent),
     agentSessions: agentSessions.map(serializeAgentSession),
     mails: mails.map(mail => ({
-      ...mail,
+      id: mail.id,
+      subject: mail.subject,
       createdAt: mail.sentAt.toISOString(),
       readAt: iso(mail.readAt),
+      sender: serializeMailUser(mail.sender),
     })),
     metrics: buildDashboardMetrics({ issues, projectsTotal: projects.length, activeSessionsTotal: agentSessions.filter(session => session.status === "ACTIVE").length }),
   };

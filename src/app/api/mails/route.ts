@@ -6,9 +6,65 @@ import { checkMonthlyMailLimit } from "@/lib/plan-limits";
 import { enforceRateLimits } from "@/lib/rate-limit";
 import { badRequest, parseBody, requiredString } from "@/lib/workspace-api";
 import prisma from "@/lib/prisma";
+import { serializeMailUser } from "@/utils/mail";
 
 const PRIVATE_NO_STORE_HEADERS = { "Cache-Control": "private, no-store, max-age=0" };
 const USER_SUMMARY = { id: true, username: true, email: true } as const;
+
+type MailWithUsers = {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  subject: string;
+  body: string;
+  readAt: Date | null;
+  sentAt: Date;
+  sender: { id: string; username: string | null; email: string };
+  recipient: { id: string; username: string | null; email: string };
+};
+
+function serializeMail(mail: MailWithUsers) {
+  return {
+    id: mail.id,
+    senderId: mail.senderId,
+    recipientId: mail.recipientId,
+    subject: mail.subject,
+    body: mail.body,
+    readAt: mail.readAt?.toISOString() ?? null,
+    sentAt: mail.sentAt.toISOString(),
+    sender: serializeMailUser(mail.sender),
+    recipient: serializeMailUser(mail.recipient),
+  };
+}
+
+/**
+ * Replies address the sender by id, since clients only see a masked email.
+ * New messages address the recipient by email or username.
+ */
+function getRecipientLookup(body: Record<string, unknown>) {
+  if (typeof body.recipientId === "string" && body.recipientId.trim()) {
+    const recipientId = body.recipientId.trim();
+
+    if (recipientId.length > 64) {
+      return { error: badRequest("Recipient is invalid.") };
+    }
+
+    return { where: { id: recipientId } };
+  }
+
+  const recipientAddress = requiredString(body.to, "to");
+  if (recipientAddress.error) return { error: recipientAddress.error };
+
+  if (recipientAddress.value.length > 255) {
+    return { error: badRequest("Recipient must be 255 characters or fewer.") };
+  }
+
+  if (recipientAddress.value.includes("@")) {
+    return { where: { email: normalizeEmail(recipientAddress.value) } };
+  }
+
+  return { where: { username: recipientAddress.value } };
+}
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -29,7 +85,7 @@ export async function GET(request: Request) {
     },
   });
 
-  return NextResponse.json({ mails }, { headers: PRIVATE_NO_STORE_HEADERS });
+  return NextResponse.json({ mails: mails.map(serializeMail) }, { headers: PRIVATE_NO_STORE_HEADERS });
 }
 
 export async function POST(request: Request) {
@@ -49,24 +105,23 @@ export async function POST(request: Request) {
   const body = await parseBody(request);
   if (!body) return badRequest("Invalid JSON body.");
 
-  const recipientAddress = requiredString(body.to, "to");
-  if (recipientAddress.error) return recipientAddress.error;
   const subject = requiredString(body.subject, "subject");
   if (subject.error) return subject.error;
   const mailBody = requiredString(body.body, "body");
   if (mailBody.error) return mailBody.error;
 
-  if (recipientAddress.value.length > 255) return badRequest("Recipient must be 255 characters or fewer.");
   if (subject.value.length > 200) return badRequest("Subject must be 200 characters or fewer.");
   if (mailBody.value.length > 20000) return badRequest("Message must be 20,000 characters or fewer.");
 
-  const recipientLookup = recipientAddress.value.includes("@")
-    ? { email: normalizeEmail(recipientAddress.value) }
-    : { username: recipientAddress.value };
+  const recipientLookup = getRecipientLookup(body);
+  if ("error" in recipientLookup) return recipientLookup.error;
+
   const recipient = await prisma.user.findFirst({
     where: {
-      ...recipientLookup,
-      id: { not: user.id },
+      AND: [
+        recipientLookup.where,
+        { id: { not: user.id } },
+      ],
       emailVerifiedAt: { not: null },
     },
     select: USER_SUMMARY,
@@ -92,5 +147,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ mail }, { status: 201, headers: PRIVATE_NO_STORE_HEADERS });
+  return NextResponse.json({ mail: serializeMail(mail) }, { status: 201, headers: PRIVATE_NO_STORE_HEADERS });
 }

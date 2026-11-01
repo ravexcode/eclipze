@@ -3,7 +3,8 @@ export type MailFolder = "inbox" | "sent";
 export type MailUser = {
   id: string;
   username: string | null;
-  email: string;
+  // Masked address such as "ra•••@example.com"; the full email is never sent to the client.
+  emailHint: string;
 };
 
 export type MailItem = {
@@ -20,6 +21,8 @@ export type MailItem = {
 
 export type MailFormValues = {
   to: string;
+  // Set when replying, so a reply reaches the sender without knowing their email.
+  recipientId?: string;
   subject: string;
   body: string;
 };
