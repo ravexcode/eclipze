@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { SERVICE_AI_PAUSED, SERVICE_AI_PAUSED_MESSAGE } from "@/constants/openrouter";
 import { getOpenRouterCredential, getOpenRouterModels } from "@/lib/openrouter";
 
 const PRIVATE_NO_STORE_HEADERS = {
@@ -18,7 +19,11 @@ export async function GET() {
     const credential = await getOpenRouterCredential(user.id);
     if (!credential) {
       return NextResponse.json(
-        { message: "Connect OpenRouter in Settings or configure the Eclipse service connection." },
+        {
+          message: SERVICE_AI_PAUSED
+            ? SERVICE_AI_PAUSED_MESSAGE
+            : "Connect OpenRouter in Settings or configure the Eclipse service connection.",
+        },
         { status: 404, headers: PRIVATE_NO_STORE_HEADERS },
       );
     }

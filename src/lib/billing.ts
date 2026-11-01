@@ -6,6 +6,7 @@ import {
   STRIPE_CREDIT_RESET_BILLING_REASONS,
   STRIPE_ENTITLED_STATUSES,
 } from "@/constants/billing";
+import { SERVICE_AI_PAUSED } from "@/constants/openrouter";
 import { SUBSCRIPTION_PLANS } from "@/constants/plans";
 import { ensureAiCreditWallet, grantTopUpCredits, resetMonthlyAiCredits } from "@/lib/ai-credits";
 import prisma from "@/lib/prisma";
@@ -241,6 +242,11 @@ export async function createTopUpCheckout(input: {
 }) {
   assertCheckoutConfigured();
 
+  // Credits cannot be spent while Eclipze-funded AI is paused, so they are not sold either.
+  if (SERVICE_AI_PAUSED) {
+    throw new BillingError("Credit top-ups are unavailable while Eclipze-funded AI is paused.", 503);
+  }
+
   const topUp = AI_CREDIT_TOP_UPS.find(option => option.key === input.topUpKey);
 
   if (!topUp) {
@@ -353,7 +359,7 @@ export async function getBillingOverview(user: BillingUser): Promise<BillingOver
     availableCredits: Math.max(0, wallet.balance - wallet.reservedCredits),
     topUpCredits: wallet.topUpCredits,
     unlimitedCredits: hasUnlimitedAiCredits(user.plan),
-    canTopUp: hasSubscription && currentPlan.billing === "monthly",
+    canTopUp: !SERVICE_AI_PAUSED && hasSubscription && currentPlan.billing === "monthly",
     plans: SUBSCRIPTION_PLANS.map(plan => ({
       key: plan.key,
       plan: plan.key.toUpperCase() as UserPlan,

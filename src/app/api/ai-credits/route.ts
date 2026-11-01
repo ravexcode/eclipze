@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ensureAiCreditWallet, getAiCreditUsageWindows } from "@/lib/ai-credits";
 import { getCurrentUser } from "@/lib/auth";
+import { isServiceOpenRouterAvailable } from "@/lib/openrouter";
 import prisma from "@/lib/prisma";
 import { formatPlanPrice, getSubscriptionPlan, hasUnlimitedAiCredits } from "@/utils/plans";
 
@@ -71,7 +72,7 @@ export async function GET() {
     monthlyUsedCredits,
     monthlyResetAt: monthlyResetAt.toISOString(),
     usageWindows,
-    serviceOpenRouterAvailable: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+    serviceOpenRouterAvailable: isServiceOpenRouterAvailable(),
     entries: entries.map(entry => ({
       ...entry,
       amountUsd: entry.amountUsd?.toString() ?? null,

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { IconArrowRight } from "@tabler/icons-react";
 
+import { SERVICE_AI_PAUSED, SERVICE_AI_PAUSED_MESSAGE } from "@/constants/openrouter";
 import { apiFetch } from "@/utils/api-fetch";
 import { readJson } from "@/utils/json-payload";
 import SettingsRow from "./settings-row";
@@ -68,7 +69,7 @@ export default function AiCreditsSection() {
           <SettingsRow
             title="Credits available"
             detail={<>${(balance.availableCredits / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} USD</>}
-            action={billingLink("Get more", "/billing#top-ups")} />
+            action={SERVICE_AI_PAUSED ? undefined : billingLink("Get more", "/billing#top-ups")} />
         ) : error ? (
           <SettingsRow title="Credits available" action={<span className="text-alert-red">Unavailable</span>} />
         ) : (
@@ -76,7 +77,9 @@ export default function AiCreditsSection() {
         )}
       {error ? <p role="alert" className="text-xs text-alert-red">{error}</p> : null}
       {balance && !balance.serviceOpenRouterAvailable ? (
-        <p className="text-xs text-foreground-off">Eclipse-funded OpenRouter is not enabled on this server.</p>
+        <p className="text-xs text-foreground-off">
+          {SERVICE_AI_PAUSED ? SERVICE_AI_PAUSED_MESSAGE : "Eclipse-funded OpenRouter is not enabled on this server."}
+        </p>
       ) : null}
     </SettingsSection>
   );

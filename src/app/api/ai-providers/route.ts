@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { encryptApiKey } from "@/lib/ai-credentials";
 import { getCurrentUser } from "@/lib/auth";
+import { isServiceOpenRouterAvailable } from "@/lib/openrouter";
 import prisma from "@/lib/prisma";
 import { AI_PROVIDERS, isAiProvider, type AiProvider } from "@/types/ai";
 import { activateProviderAgent, deactivateProviderAgent, isExternalAgentProvider } from "@/lib/agent-provider-sync";
@@ -129,7 +130,7 @@ export async function GET() {
 
       return [serializeConnection({ ...connection, provider })];
     }),
-    serviceOpenRouterAvailable: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+    serviceOpenRouterAvailable: isServiceOpenRouterAvailable(),
   }, { headers: PRIVATE_NO_STORE_HEADERS });
 }
 

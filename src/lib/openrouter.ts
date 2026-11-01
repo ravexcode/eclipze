@@ -2,11 +2,26 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
+import { SERVICE_AI_PAUSED } from "@/constants/openrouter";
 import { decryptApiKey } from "@/lib/ai-credentials";
 import prisma from "@/lib/prisma";
 
+// The Eclipze service key is used only while the service is not paused.
+function getServiceKey() {
+  if (SERVICE_AI_PAUSED) {
+    return null;
+  }
+
+  return process.env.OPENROUTER_API_KEY?.trim() || null;
+}
+
+export function isServiceOpenRouterAvailable() {
+  return Boolean(getServiceKey());
+}
+
 export async function getOpenRouterCredential(userId: string) {
-  const serviceKey = process.env.OPENROUTER_API_KEY?.trim();
+  const serviceKey = getServiceKey();
+
   if (serviceKey) {
     return { apiKey: serviceKey, isServiceKey: true };
   }

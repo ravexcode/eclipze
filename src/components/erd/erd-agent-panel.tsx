@@ -10,6 +10,7 @@ import Button from "@/components/ui/button";
 import MenuSelector from "@/components/ui/menu-selector";
 import { DATABASE_PROVIDER_LABELS } from "@/constants/database-connections";
 import { ERD_AGENT_SUGGESTIONS } from "@/constants/erd";
+import { SERVICE_AI_PAUSED } from "@/constants/openrouter";
 import type { DatabaseConnectionSummary, DatabaseProject } from "@/types/database-connections";
 import type { ErdDocument } from "@/types/erd";
 import type { WorkspaceAgent } from "@/types/user";
@@ -265,7 +266,10 @@ export default function ErdAgentPanel(props: Props) {
         {chat.messages.length === 0 ? (
           <div className="flex flex-col gap-2">
             <p className="text-xs text-foreground-off">
-              Ask the agent to create ERDs, review the list of changes against your database, or update the database. Agents on Eclipse AI credits spend credits per message; agents on your own API key bill your provider.
+              Ask the agent to create ERDs, review the list of changes against your database, or update the database.{" "}
+              {SERVICE_AI_PAUSED
+                ? "Eclipze-funded AI is temporarily paused, so agents run only on your own API key and bill your provider."
+                : "Agents on Eclipse AI credits spend credits per message; agents on your own API key bill your provider."}
             </p>
             {ERD_AGENT_SUGGESTIONS.map(suggestion => (
               <button
