@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import {
   createVerificationCode,
+  getRequestIp,
   isValidEmail,
   normalizeEmail,
   type AuthCodePurpose,
 } from "@/lib/auth";
 import { sendAuthCodeEmail } from "@/lib/auth-email";
+import { enforceRateLimits } from "@/lib/rate-limit";
 
 function isSupportedPurpose(value: string): value is AuthCodePurpose {
   return value === "EMAIL_VERIFICATION";
@@ -21,6 +24,15 @@ export async function POST(request: Request) {
 
   const email = normalizeEmail(body?.email ?? "");
   const purpose = body?.purpose ?? "";
+
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.sendCodeByIp, subject: getRequestIp(request) },
+    ...(isValidEmail(email) ? [{ rule: RATE_LIMIT_RULES.sendCodeByEmail, subject: email }] : []),
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   if (!email || !purpose) {
     return NextResponse.json({ message: "Email and purpose are required." }, { status: 400 });

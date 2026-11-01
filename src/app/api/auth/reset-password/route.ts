@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
 
-import { hashPassword, isValidEmail, isValidPassword, normalizeEmail, resetPasswordWithCode } from "@/lib/auth";
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
+import {
+  getRequestIp,
+  hashPassword,
+  isValidEmail,
+  isValidPassword,
+  normalizeEmail,
+  resetPasswordWithCode,
+} from "@/lib/auth";
+import { enforceRateLimits } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.verifyCodeByIp, subject: getRequestIp(request) },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const body = await request.json().catch(() => null) as { email?: string; code?: string; password?: string; password_confirm?: string } | null;
   const email = normalizeEmail(body?.email ?? "");
   const code = (body?.code ?? "").trim();

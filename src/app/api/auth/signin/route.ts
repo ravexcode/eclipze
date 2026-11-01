@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import {
   createSession,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/auth";
 import { sendNewSignInEmail } from "@/lib/auth-email";
 import { recordCurrentLegalAcceptance } from "@/lib/legal-acceptance";
+import { enforceRateLimits } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as {
@@ -20,6 +22,16 @@ export async function POST(request: Request) {
 
   const email = normalizeEmail(body?.email ?? "");
   const password = body?.password ?? "";
+
+  // Runs before the password hash check, which is the expensive step attackers target.
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.signInByIp, subject: getRequestIp(request) },
+    ...(isValidEmail(email) ? [{ rule: RATE_LIMIT_RULES.signInByEmail, subject: email }] : []),
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   if (!email || !password) {
     return NextResponse.json({ message: "Email and password are required." }, { status: 400 });

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import { getCurrentUser, normalizeEmail } from "@/lib/auth";
 import { checkMonthlyMailLimit } from "@/lib/plan-limits";
+import { enforceRateLimits } from "@/lib/rate-limit";
 import { badRequest, parseBody, requiredString } from "@/lib/workspace-api";
 import prisma from "@/lib/prisma";
 
@@ -34,6 +36,14 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401, headers: PRIVATE_NO_STORE_HEADERS });
+  }
+
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.mailSendByUser, subject: user.id },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   const body = await parseBody(request);

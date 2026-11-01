@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import { createInitialAiCreditGrant } from "@/lib/ai-credits";
 import {
   createVerificationCode,
+  getRequestIp,
   hashPassword,
   isValidEmail,
   isValidPassword,
@@ -12,6 +14,7 @@ import {
   normalizeUsername,
 } from "@/lib/auth";
 import { sendAuthCodeEmail } from "@/lib/auth-email";
+import { enforceRateLimits } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as {
@@ -44,6 +47,16 @@ export async function POST(request: Request) {
 
   if (password !== passwordConfirm) {
     return NextResponse.json({ message: "Passwords do not match." }, { status: 400 });
+  }
+
+  // Counted after input validation, so typos do not use up the limit, and before the
+  // account lookup, so the "already exists" answer cannot be probed at scale.
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.signUpByIp, subject: getRequestIp(request) },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   const [existingByEmail, existingByUsername] = await Promise.all([

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import {
   clearSession,
   getCurrentSession,
@@ -11,6 +12,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { enforceRateLimits } from "@/lib/rate-limit";
 import { ACCOUNT_DELETION_DELAY_DAYS } from "@/types/user";
 import { isValidAvatarUrl, normalizeAvatarUrl } from "@/utils/avatar-url";
 import { Prisma } from "@prisma/client";
@@ -93,6 +95,15 @@ export async function PATCH(request: Request) {
       !body.passwordConfirm
     ) {
       return NextResponse.json({ message: "Current password, new password, and password confirmation are required." }, { status: 400 });
+    }
+
+    // Limits password guessing by anyone who holds a stolen session cookie.
+    const rateLimitResponse = await enforceRateLimits([
+      { rule: RATE_LIMIT_RULES.passwordCheckByUser, subject: user.id },
+    ]);
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     if (!user.passwordHash || !(await verifyPassword(body.currentPassword, user.passwordHash))) {
@@ -190,6 +201,14 @@ export async function DELETE(request: Request) {
 
   if (!body || typeof body.password !== "string" || !body.password) {
     return NextResponse.json({ message: "Current password is required." }, { status: 400 });
+  }
+
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.passwordCheckByUser, subject: user.id },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   if (!user.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) {
