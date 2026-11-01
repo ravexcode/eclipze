@@ -387,8 +387,11 @@ export async function cancelAgentRun(runId: string, userId: string) {
   }
 
   if (run.status === "RUNNING" || run.status === "WAITING_FOR_APPROVAL") {
-    await prisma.agentRun.update({ where: { id: run.id }, data: { cancelRequestedAt: new Date() } });
-    return prisma.agentRun.findUnique({ where: { id: run.id } });
+    // update() returns the updated row, so a second read is not needed.
+    return prisma.agentRun.update({
+      where: { id: run.id },
+      data: { cancelRequestedAt: new Date() },
+    });
   }
 
   return run;
