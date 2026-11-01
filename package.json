@@ -17,7 +17,8 @@
     "prisma:studio": "prisma studio",
     "developer:promote": "node --env-file=.env scripts/promote-developer.cjs",
     "developer:demote": "node --env-file=.env scripts/promote-developer.cjs --demote",
-    "stripe:setup": "node --env-file=.env scripts/setup-stripe.mjs"
+    "stripe:setup": "node --env-file=.env scripts/setup-stripe.mjs",
+    "stripe:webhook": "node --env-file=.env scripts/stripe-webhook.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

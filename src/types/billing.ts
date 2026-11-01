@@ -18,6 +18,8 @@ export type StripeMetadata = Record<string, string>;
 
 export type StripeCustomer = {
   id: string;
+  // Present on customers removed from the dashboard; Stripe still returns them by ID.
+  deleted?: boolean;
 };
 
 export type StripeCheckoutSession = {
@@ -81,6 +83,8 @@ export type StripeErrorPayload = {
   error?: {
     message?: string;
     type?: string;
+    code?: string;
+    param?: string;
   };
 };
 

@@ -14,6 +14,7 @@ import {
   getStripePriceId,
   getStripePublishableKey,
   isStripeConfigured,
+  StripeRequestError,
   stripeRequest,
 } from "@/lib/stripe";
 import type {
@@ -85,23 +86,85 @@ function toBillingCheckoutSession(
   };
 }
 
-async function getOrCreateBillingAccount(user: BillingUser) {
-  const existingAccount = await prisma.billingAccount.findUnique({ where: { userId: user.id } });
-
-  if (existingAccount) {
-    return existingAccount;
-  }
-
-  // The idempotency key keeps concurrent first checkouts from creating two customers.
-  const customer = await stripeRequest<StripeCustomer>({
+function createStripeCustomer(user: BillingUser, idempotencyKey: string) {
+  return stripeRequest<StripeCustomer>({
     method: "POST",
     path: "/customers",
     params: {
       email: user.email,
       metadata: { userId: user.id },
     },
-    idempotencyKey: `customer:${user.id}`,
+    idempotencyKey,
   });
+}
+
+// A stored customer is unusable when it was created with another Stripe account or mode,
+// such as an earlier sandbox key, or when it was deleted from the dashboard.
+async function stripeCustomerExists(customerId: string) {
+  try {
+    const customer = await stripeRequest<StripeCustomer>({
+      method: "GET",
+      path: `/customers/${encodeURIComponent(customerId)}`,
+    });
+
+    return !customer.deleted;
+  } catch (error) {
+    if (error instanceof StripeRequestError && error.code === "resource_missing") {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+// Links the user to a new customer in the current Stripe account. The old subscription
+// fields belonged to the unusable customer, so they are cleared with it.
+async function replaceStripeCustomer(user: BillingUser, staleCustomerId: string) {
+  console.warn("Replacing a Stripe customer that does not exist in the current account", {
+    userId: user.id,
+    staleCustomerId,
+  });
+
+  // Keyed on the stale ID so concurrent requests share one replacement customer.
+  const customer = await createStripeCustomer(user, `customer:${user.id}:replaces:${staleCustomerId}`);
+
+  return prisma.billingAccount.update({
+    where: { userId: user.id },
+    data: {
+      stripeCustomerId: customer.id,
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    },
+  });
+}
+
+// Returns the user's billing account with a customer that exists in the current Stripe
+// account, or null when the user has never started a checkout.
+async function getVerifiedBillingAccount(user: BillingUser) {
+  const account = await prisma.billingAccount.findUnique({ where: { userId: user.id } });
+
+  if (!account) {
+    return null;
+  }
+
+  if (await stripeCustomerExists(account.stripeCustomerId)) {
+    return account;
+  }
+
+  return replaceStripeCustomer(user, account.stripeCustomerId);
+}
+
+async function getOrCreateBillingAccount(user: BillingUser) {
+  const existingAccount = await getVerifiedBillingAccount(user);
+
+  if (existingAccount) {
+    return existingAccount;
+  }
+
+  // The idempotency key keeps concurrent first checkouts from creating two customers.
+  const customer = await createStripeCustomer(user, `customer:${user.id}`);
 
   return prisma.billingAccount.upsert({
     where: { userId: user.id },
@@ -184,7 +247,7 @@ export async function createTopUpCheckout(input: {
     throw new BillingError("Choose a valid credit top-up.", 400);
   }
 
-  const account = await prisma.billingAccount.findUnique({ where: { userId: input.user.id } });
+  const account = await getVerifiedBillingAccount(input.user);
   const plan = getSubscriptionPlan(input.user.plan);
 
   // Top-ups are a paid-plan feature, and unlimited plans do not need them.
@@ -238,7 +301,7 @@ export async function createBillingPortalSession(input: {
   origin: string;
   flow: "manage" | "change_plan";
 }) {
-  const account = await prisma.billingAccount.findUnique({ where: { userId: input.user.id } });
+  const account = await getVerifiedBillingAccount(input.user);
 
   if (!account) {
     throw new BillingError("You do not have billing history yet.", 404);

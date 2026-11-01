@@ -18,11 +18,14 @@ import { encodeStripeParams, parseStripeSignatureHeader } from "@/utils/stripe";
 
 export class StripeRequestError extends Error {
   status: number;
+  // Stripe's error code, such as resource_missing, so callers can recover from known failures.
+  code: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code: string | null = null) {
     super(message);
     this.name = "StripeRequestError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -82,14 +85,22 @@ export async function stripeRequest<T>(input: {
   const payload = await response.json().catch(() => null) as (T & StripeErrorPayload) | null;
 
   if (!response.ok || !payload) {
-    // Stripe error messages never include the secret key, but log only the type to keep logs small.
+    // Stripe error messages never include the secret key, so they are safe to log. The message,
+    // code, and param name the actual cause, such as a price ID from another Stripe account.
     console.error("Stripe request failed", {
       path: input.path,
       status: response.status,
       type: payload?.error?.type,
+      code: payload?.error?.code,
+      param: payload?.error?.param,
+      message: payload?.error?.message,
     });
 
-    throw new StripeRequestError("The payment provider is unavailable right now. Try again in a moment.", 502);
+    throw new StripeRequestError(
+      "The payment provider is unavailable right now. Try again in a moment.",
+      502,
+      payload?.error?.code ?? null,
+    );
   }
 
   return payload;
