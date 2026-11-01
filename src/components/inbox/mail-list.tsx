@@ -1,4 +1,5 @@
 import type { MailFolder, MailItem } from "@/types/mail";
+import { getMailUserLabel } from "@/utils/mail";
 
 type MailListProps = {
   folder: MailFolder;
@@ -15,10 +16,6 @@ const MAIL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
 
 function formatDate(value: string) {
   return MAIL_DATE_FORMATTER.format(new Date(value));
-}
-
-function getPersonLabel(person: MailItem["sender"]) {
-  return person.username ? `${person.username} · ${person.email}` : person.email;
 }
 
 export default function MailList({ folder, mails, selectedId, onSelect }: MailListProps) {
@@ -43,7 +40,7 @@ export default function MailList({ folder, mails, selectedId, onSelect }: MailLi
             <span className="flex min-w-0 items-center gap-2 text-xs">
               {unread ? <span aria-label="Unread" className="size-2 shrink-0 rounded-full bg-accent" /> : null}
               <span className={`min-w-0 flex-1 truncate ${unread ? "font-medium text-foreground" : "text-foreground-off"}`}>
-                {getPersonLabel(person)}
+                {getMailUserLabel(person)}
               </span>
               <time className="shrink-0 text-xs text-foreground-off">{formatDate(mail.sentAt)}</time>
             </span>

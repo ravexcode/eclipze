@@ -1,3 +1,5 @@
+import type { MailUser } from "@/types/mail";
+
 export type UserCredentials = {
   email: string;
   password: string;
@@ -108,7 +110,7 @@ export type WorkspaceMail = {
   subject: string;
   createdAt: string;
   readAt: string | null;
-  sender: { id: string; username: string | null; email: string };
+  sender: MailUser;
 };
 
 export type WorkspaceSnapshot = {

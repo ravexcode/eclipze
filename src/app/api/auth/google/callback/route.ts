@@ -13,6 +13,7 @@ import {
   getRequestIp,
 } from "@/lib/auth";
 import { sendNewSignInEmail } from "@/lib/auth-email";
+import { sendEmailAfterResponse } from "@/lib/email-delivery";
 import {
   fetchGoogleProfile,
   findOrCreateGoogleUser,
@@ -80,12 +81,15 @@ export async function GET(request: Request) {
 
   await recordCurrentLegalAcceptance(result.user.id);
   await createSession(result.user.id);
-  void sendNewSignInEmail({
+  // Captured now, so the notice shows the sign-in time rather than the send time.
+  const signInNotice = {
     to: result.user.email,
     ip: getRequestIp(request),
     device: describeDevice(request.headers.get("user-agent")),
     occurredAt: new Date().toISOString(),
-  }).catch(() => undefined);
+  };
+
+  sendEmailAfterResponse("Sign-in notice", () => sendNewSignInEmail(signInNotice));
 
   return NextResponse.redirect(new URL("/dashboard", appOrigin));
 }

@@ -3,6 +3,7 @@ import { IconArrowUpRight, IconInbox } from "@tabler/icons-react";
 import UsageLimits from "@/components/overview/usage-limits";
 import { ISSUE_HEAT_LEVELS } from "@/constants/overview";
 import type { WorkspaceIssue, WorkspaceSnapshot } from "@/types/user";
+import { getMailUserLabel } from "@/utils/mail";
 import { getYearIssueDays } from "@/utils/overview";
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -98,7 +99,7 @@ export default function OverviewDashboard({
                       />
                       <span className="min-w-0 flex-1 truncate text-foreground-off">
                         <span className="mr-2 text-foreground">
-                          {mail.sender.username ?? mail.sender.email}
+                          {getMailUserLabel(mail.sender)}
                         </span>
                         {mail.subject}
                       </span>

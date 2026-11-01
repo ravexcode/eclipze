@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { SERVICE_AI_PAUSED } from "@/constants/openrouter";
 import { decryptApiKey } from "@/lib/ai-credentials";
 import prisma from "@/lib/prisma";
+import { getAiProviderCredentialContext } from "@/utils/ai-credentials";
 
 // The Eclipze service key is used only while the service is not paused.
 function getServiceKey() {
@@ -34,7 +35,10 @@ export async function getOpenRouterCredential(userId: string) {
   if (!connection?.encryptedApiKey) return null;
 
   try {
-    return { apiKey: decryptApiKey(connection.encryptedApiKey), isServiceKey: false };
+    return {
+      apiKey: decryptApiKey(connection.encryptedApiKey, getAiProviderCredentialContext(userId, "OPENROUTER")),
+      isServiceKey: false,
+    };
   } catch {
     throw new Error("Unable to read the saved OpenRouter connection. Reconnect it in Settings.");
   }

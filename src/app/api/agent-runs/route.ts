@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { after, NextResponse } from "next/server";
 
+import { encryptContent } from "@/lib/content-encryption";
 import { getCurrentUser } from "@/lib/auth";
 import {
   appendRunEvent,
@@ -246,7 +247,7 @@ export async function POST(request: Request) {
       mcpConnectionId,
       permissionMode,
       creditReservation,
-      prompt: prompt.value,
+      prompt: encryptContent(prompt.value, "agent-run.prompt"),
       commandKey: command.key,
       instructionsDigest: createInstructionsDigest(promptSnapshot),
       skillSnapshot: selectedSkills.map(skill => ({

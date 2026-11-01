@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { enforceRateLimits } from "@/lib/rate-limit";
+import { notifySecurityEvent } from "@/lib/security-email";
 import { ACCOUNT_DELETION_DELAY_DAYS } from "@/types/user";
 import { isValidAvatarUrl, normalizeAvatarUrl } from "@/utils/avatar-url";
 import { Prisma } from "@prisma/client";
@@ -161,6 +162,11 @@ export async function PATCH(request: Request) {
 
     const changedPassword = Boolean(data.passwordHash);
     const changedUsername = Boolean(data.username);
+
+    if (changedPassword) {
+      notifySecurityEvent(request, { to: updatedUser.email, kind: "PASSWORD_CHANGED" });
+    }
+
     const message = changedPassword && changedUsername
       ? "Profile and password updated successfully."
       : changedPassword
@@ -219,6 +225,8 @@ export async function DELETE(request: Request) {
     where: { id: user.id },
   });
   await clearSession();
+
+  notifySecurityEvent(request, { to: user.email, kind: "ACCOUNT_DELETED" });
 
   return NextResponse.json({ message: "Account deleted successfully." });
 }

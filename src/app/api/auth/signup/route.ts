@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { createInitialAiCreditGrant } from "@/lib/ai-credits";
 import {
   createVerificationCode,
+  ensureVerificationRequesterTokenHash,
   getRequestIp,
   hashPassword,
   isValidEmail,
@@ -15,6 +16,56 @@ import {
 } from "@/lib/auth";
 import { sendAuthCodeEmail } from "@/lib/auth-email";
 import { enforceRateLimits } from "@/lib/rate-limit";
+import { notifySecurityEvent } from "@/lib/security-email";
+
+async function sendVerificationCode(input: {
+  userId: string;
+  email: string;
+  passwordHash: string;
+  username: string;
+  requesterTokenHash: string;
+}) {
+  // The code works only in this browser and carries the credentials it chose, which
+  // replace any password already on the account once the email is verified.
+  const verification = await createVerificationCode({
+    userId: input.userId,
+    purpose: "EMAIL_VERIFICATION",
+    requesterTokenHash: input.requesterTokenHash,
+    pendingCredentials: {
+      passwordHash: input.passwordHash,
+      username: input.username,
+    },
+  });
+
+  try {
+    await sendAuthCodeEmail({
+      to: input.email,
+      code: verification.code,
+      purpose: "EMAIL_VERIFICATION",
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createVerificationStepResponse(email: string, isSent: boolean) {
+  if (!isSent) {
+    return NextResponse.json({
+      message: "Account created, but email delivery is not configured yet. Add RESEND_API_KEY and AUTH_EMAIL_FROM, then resend the verification code.",
+      nextStep: "verify_email",
+      email,
+      warning: true,
+    }, { status: 202 });
+  }
+
+  return NextResponse.json({
+    message: "Account created. We sent a verification code to your email.",
+    nextStep: "verify_email",
+    email,
+  }, { status: 201 });
+}
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as {
@@ -64,15 +115,36 @@ export async function POST(request: Request) {
     prisma.user.findUnique({ where: { username } }),
   ]);
 
-  if (existingByEmail) {
-    return NextResponse.json({ message: "An account with that email already exists." }, { status: 409 });
-  }
-
-  if (existingByUsername) {
+  // Usernames are public, so a taken username can be reported directly.
+  if (existingByUsername && existingByUsername.id !== existingByEmail?.id) {
     return NextResponse.json({ message: "That username is already taken." }, { status: 409 });
   }
 
+  // Hashed on every path, so a known email takes as long to answer as a new one.
   const passwordHash = await hashPassword(password);
+
+  // Set on every path too, so the Set-Cookie header does not reveal which emails exist.
+  const requesterTokenHash = await ensureVerificationRequesterTokenHash();
+
+  if (existingByEmail) {
+    // Answer exactly like a new sign-up, so this endpoint does not reveal which emails
+    // have accounts. For an unverified account, the code applies this request's password
+    // and username on verification, so a password chosen by whoever pre-registered the
+    // email is never kept.
+    if (existingByEmail.emailVerifiedAt) {
+      notifySecurityEvent(request, { to: email, kind: "SIGNUP_ATTEMPT" });
+      return createVerificationStepResponse(email, true);
+    }
+
+    const isSent = await sendVerificationCode({
+      userId: existingByEmail.id,
+      email,
+      passwordHash,
+      username,
+      requesterTokenHash,
+    });
+    return createVerificationStepResponse(email, isSent);
+  }
 
   const user = await prisma.$transaction(async transaction => {
     const createdUser = await transaction.user.create({
@@ -87,29 +159,12 @@ export async function POST(request: Request) {
     return createdUser;
   });
 
-  const verification = await createVerificationCode({
+  const isSent = await sendVerificationCode({
     userId: user.id,
-    purpose: "EMAIL_VERIFICATION",
+    email,
+    passwordHash,
+    username,
+    requesterTokenHash,
   });
-
-  try {
-    await sendAuthCodeEmail({
-      to: email,
-      code: verification.code,
-      purpose: "EMAIL_VERIFICATION",
-    });
-
-    return NextResponse.json({
-      message: "Account created. We sent a verification code to your email.",
-      nextStep: "verify_email",
-      email,
-    }, { status: 201 });
-  } catch {
-    return NextResponse.json({
-      message: "Account created, but email delivery is not configured yet. Add RESEND_API_KEY and AUTH_EMAIL_FROM, then resend the verification code.",
-      nextStep: "verify_email",
-      email,
-      warning: true,
-    }, { status: 202 });
-  }
+  return createVerificationStepResponse(email, isSent);
 }

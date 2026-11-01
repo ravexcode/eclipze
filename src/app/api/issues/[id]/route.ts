@@ -5,6 +5,7 @@ import { badRequest, enumString, notFound, optionalString, parseBody, requiredSt
 import { serializeIssue } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
 import { getIssueAccessFilter, getIssueRecipientIds } from "@/lib/issue-access";
+import { decryptContent } from "@/lib/content-encryption";
 
 const TYPES = ["BUG", "FEATURE", "SUPPORT"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
@@ -35,6 +36,7 @@ export async function GET(_request: Request, context: Context) {
       requester: issue.user,
       messages: issue.messages.map(message => ({
         ...message,
+        body: decryptContent(message.body, "issue-message.body"),
         createdAt: message.createdAt.toISOString(),
         updatedAt: message.updatedAt.toISOString(),
       })),

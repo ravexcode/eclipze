@@ -34,7 +34,7 @@ Open [http://localhost:4040](http://localhost:4040). Set `APP_PORT` in your term
 
 ## Configuration
 
-Compose loads runtime settings from `.env`. Environment files are excluded from the Docker build context and are never copied into the image. Only `NEXT_PUBLIC_API_KEY` and `NEXT_PUBLIC_CRYPTO_SECRET_KEY` are passed as build arguments. These values are public browser configuration; rebuild the image when they change. The API key used by the browser and server must match.
+Compose loads runtime settings from `.env`. Environment files are excluded from the Docker build context and are never copied into the image. Only `NEXT_PUBLIC_API_KEY` is passed as a build argument. This value is public browser configuration, not a secret; rebuild the image when they change. The API key used by the browser and server must match.
 
 The app waits for PostgreSQL's health check. PostgreSQL is accessible within the Compose network, and the app's port is bound to localhost. For remote hosting, configure HTTPS and a reverse proxy; production authentication uses secure cookies.
 
