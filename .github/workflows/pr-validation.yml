@@ -22,7 +22,6 @@ jobs:
         shell: bash
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/eclipse_ci
-      NEXT_PUBLIC_CRYPTO_SECRET_KEY: ci-only-placeholder-key
 
     steps:
       # Repository policy permits only actions owned by ravexcode.
