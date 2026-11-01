@@ -8,6 +8,7 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import AgentComposer from "@/components/agents/composer";
 import ChatThread from "@/components/agents/chat-thread";
+import ConnectProviderDialog from "@/components/agents/connect-provider-dialog";
 import WorkspaceDialog from "@/components/agents/workspace-dialog";
 
 import type { AiProviderConnection } from "@/types/ai";
@@ -40,7 +41,10 @@ export default function AgentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDecidingApproval, setIsDecidingApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showNoProvidersSnackbar, setShowNoProvidersSnackbar] = useState(false);
+  // null until the provider connections load successfully.
+  const [hasOpenRouter, setHasOpenRouter] = useState<boolean | null>(null);
+  const [hasConnectedProvider, setHasConnectedProvider] = useState(false);
+  const [isProviderDialogOpen, setIsProviderDialogOpen] = useState(false);
   const [activeRun, setActiveRun] = useState<AgentRun | null>(null);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
@@ -71,15 +75,26 @@ export default function AgentsPage() {
           ];
 
         if (cancelled) return;
-        if (!providerResponse.ok) throw new Error(providerPayload.message ?? "Unable to load your AI provider.");
         if (!repositoryResponse.ok) throw new Error(repositoryPayload.message ?? "Unable to load repositories.");
         if (!skillResponse.ok) throw new Error(skillPayload.message ?? "Unable to load your skills.");
         if (!creditsResponse.ok) throw new Error(creditsPayload.message ?? "Unable to load your AI credit balance.");
 
-        const connections = providerPayload.connections ?? [];
-        const hasOpenRouterConnection = connections.some(connection => connection.provider === "OPENROUTER" && connection.connected);
-        const hasOpenRouter = hasOpenRouterConnection || Boolean(providerPayload.serviceOpenRouterAvailable);
-        setShowNoProvidersSnackbar(!hasOpenRouter);
+        // A failed provider request does not block the workspace. The server still checks
+        // the provider when a task starts.
+        if (providerResponse.ok) {
+          const connections = providerPayload.connections ?? [];
+          const isServiceAvailable = Boolean(providerPayload.serviceOpenRouterAvailable);
+          const hasOpenRouterConnection = connections.some(connection => {
+            return connection.provider === "OPENROUTER" && connection.connected;
+          });
+          const hasAnyConnection = connections.some(connection => connection.connected) || isServiceAvailable;
+
+          setHasOpenRouter(hasOpenRouterConnection || isServiceAvailable);
+          setHasConnectedProvider(hasAnyConnection);
+          setIsProviderDialogOpen(!hasAnyConnection);
+        } else {
+          setError(providerPayload.message ?? "Unable to load your AI providers. Try again in a moment.");
+        }
         const nextRepositories = repositoryPayload.repositories ?? [];
         const savedRepositoryId = window.localStorage.getItem("agent-repository-id");
         setRepositoryId(current => current || (savedRepositoryId && nextRepositories.some(repository => repository.id === savedRepositoryId)
@@ -163,7 +178,13 @@ export default function AgentsPage() {
   };
 
   const submitTask = async () => {
-    if (!repositoryId || (showNoProvidersSnackbar && !mentionedAgent)) return;
+    if (!repositoryId) return;
+
+    // Tasks without an agent mention run on OpenRouter.
+    if (hasOpenRouter === false && !mentionedAgent) {
+      setIsProviderDialogOpen(true);
+      return;
+    }
 
     const submittedPrompt = prompt;
 
@@ -248,6 +269,11 @@ export default function AgentsPage() {
           <WorkspaceDialog />
         </header>
 
+        <ConnectProviderDialog
+          isOpen={isProviderDialogOpen}
+          hasConnectedProvider={hasConnectedProvider}
+          onClose={() => setIsProviderDialogOpen(false)} />
+
         <section className="flex min-h-0 flex-1 flex-col px-5 pb-8 sm:px-8">
 
           {activeRun || pendingPrompt ? (
@@ -269,7 +295,7 @@ export default function AgentsPage() {
               id="agent-prompt"
               value={prompt}
               placeholder="What should your agent help you deliver?"
-              isSendDisabled={isLoading || isSubmitting || (showNoProvidersSnackbar && !mentionedAgent) || !repositoryId || !prompt.trim()}
+              isSendDisabled={isLoading || isSubmitting || !repositoryId || !prompt.trim()}
               currentRunId={activeRun?.id}
               skills={skills}
               selectedSkillIds={selectedSkillIds}
