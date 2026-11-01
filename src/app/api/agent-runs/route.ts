@@ -92,14 +92,48 @@ export async function POST(request: Request) {
   if (prompt.value.length > 8_000) return badRequest("prompt is too long.");
   if (model.value.length > 200) return badRequest("model is too long.");
 
+  const requestedSessionId = typeof body.sessionId === "string"
+    ? body.sessionId.trim()
+    : "";
+
+  const requestedSkillIds = Array.isArray(body.skillIds)
+    ? [...new Set(body.skillIds.filter((id): id is string => typeof id === "string"))]
+    : [];
+
+  if (requestedSkillIds.length > 10) {
+    return badRequest("Choose no more than 10 skills per task.");
+  }
+
+  // These lookups do not depend on each other, so they run in one round of queries.
+  // The checks below still run in the original order, so error messages keep their priority.
+  const [session, agent, repository, selectedSkills] = await Promise.all([
+    requestedSessionId
+      ? prisma.agentSession.findFirst({
+          where: { id: requestedSessionId, userId: user.id },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    agentId
+      ? prisma.agent.findFirst({
+          where: { id: agentId, userId: user.id },
+          select: { provider: true, defaultModel: true, mcpConnectionId: true, status: true },
+        })
+      : Promise.resolve(null),
+    prisma.workspaceRepository.findFirst({
+      where: { id: repositoryId.value, userId: user.id },
+      select: { id: true },
+    }),
+    requestedSkillIds.length > 0
+      ? prisma.userSkill.findMany({
+          where: { userId: user.id, id: { in: requestedSkillIds } },
+          select: { id: true, sourceId: true, source: true, slug: true, name: true, content: true, version: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
   let sessionId: string | null = null;
 
-  if (typeof body.sessionId === "string" && body.sessionId.trim()) {
-    const session = await prisma.agentSession.findFirst({
-      where: { id: body.sessionId.trim(), userId: user.id },
-      select: { id: true },
-    });
-
+  if (requestedSessionId) {
     if (!session) return notFound("Agent session not found.");
     sessionId = session.id;
   }
@@ -109,11 +143,6 @@ export async function POST(request: Request) {
   let mcpConnectionId: string | null = null;
 
   if (agentId) {
-    const agent = await prisma.agent.findFirst({
-      where: { id: agentId, userId: user.id },
-      select: { provider: true, defaultModel: true, mcpConnectionId: true, status: true },
-    });
-
     if (!agent) return notFound("Agent not found.");
     if (agent.status !== "ACTIVE") return badRequest("This agent is inactive.");
 
@@ -142,29 +171,9 @@ export async function POST(request: Request) {
     return badRequest("Connect an OpenRouter provider in Settings before starting a task.");
   }
 
-  const repository = await prisma.workspaceRepository.findFirst({
-    where: { id: repositoryId.value, userId: user.id },
-    select: { id: true },
-  });
-
   if (!repository) {
     return notFound("Repository not found.");
   }
-
-  const requestedSkillIds = Array.isArray(body.skillIds)
-    ? [...new Set(body.skillIds.filter((id): id is string => typeof id === "string"))]
-    : [];
-
-  if (requestedSkillIds.length > 10) {
-    return badRequest("Choose no more than 10 skills per task.");
-  }
-
-  const selectedSkills = requestedSkillIds.length > 0
-    ? await prisma.userSkill.findMany({
-        where: { userId: user.id, id: { in: requestedSkillIds } },
-        select: { id: true, sourceId: true, source: true, slug: true, name: true, content: true, version: true },
-      })
-    : [];
 
   if (selectedSkills.length !== requestedSkillIds.length) {
     return badRequest("One or more selected skills are no longer available.");
@@ -251,7 +260,6 @@ export async function POST(request: Request) {
       })),
       workspaceKey: randomUUID(),
     },
-    include: { events: true },
   });
 
   if (creditReservation > 0) {
@@ -266,16 +274,12 @@ export async function POST(request: Request) {
     }
   }
 
-  await appendRunEvent(run.id, { type: "SYSTEM", message: "Run queued." });
+  // A new run has only the "queued" event, so the response is built without reading the run again.
+  const queuedEvent = await appendRunEvent(run.id, { type: "SYSTEM", message: "Run queued." });
   after(() => startAgentRun(run.id, user.id));
 
-  const createdRun = await prisma.agentRun.findUnique({
-    where: { id: run.id },
-    include: { events: { orderBy: { sequence: "asc" } } },
-  });
-
   return NextResponse.json(
-    { run: createdRun ? serializeAgentRun(createdRun) : serializeAgentRun(run) },
+    { run: serializeAgentRun({ ...run, events: [queuedEvent] }) },
     { status: 202, headers: PRIVATE_NO_STORE_HEADERS },
   );
 }
