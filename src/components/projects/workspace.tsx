@@ -15,7 +15,7 @@ import {
   PROJECT_STATUS_OPTIONS,
 } from "@/constants/workspace";
 import type { ProjectStatus, WorkspaceProject } from "@/types/user";
-import type { AgentRun } from "@/types/agent-runner";
+import type { AgentRunSummary } from "@/types/agent-runner";
 import { apiFetch } from "@/utils/api-fetch";
 import { errorMessage, readJson } from "@/utils/json-payload";
 
@@ -36,7 +36,7 @@ export default function ProjectsWorkspace() {
   const [saving, setSaving] = useState(false);
   const [sessionsProject, setSessionsProject] = useState<WorkspaceProject | null>(null);
   const [showSessions, setShowSessions] = useState(false);
-  const [projectRuns, setProjectRuns] = useState<Record<string, AgentRun[]>>({});
+  const [projectRuns, setProjectRuns] = useState<Record<string, AgentRunSummary[]>>({});
   const [loadingProjectRunsId, setLoadingProjectRunsId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -115,7 +115,7 @@ export default function ProjectsWorkspace() {
     setLoadingProjectRunsId(projectId);
     try {
       const response = await apiFetch(`/api/agent-runs?projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" });
-      const payload = await readJson(response) as { runs?: AgentRun[]; message?: string };
+      const payload = await readJson(response) as { runs?: AgentRunSummary[]; message?: string };
       if (!response.ok) throw new Error(payload.message ?? "Unable to load project sessions.");
       setProjectRuns(current => ({ ...current, [projectId]: payload.runs ?? [] }));
     } catch (loadError) {

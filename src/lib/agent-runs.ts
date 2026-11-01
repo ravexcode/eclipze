@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import type { AgentProvider } from "@/types/ai";
 import type { AgentPermissionMode, AgentRunEventType } from "@/types/agent-runner";
 import { DEFAULT_AGENT_PERMISSION_MODE } from "@/constants/agents";
+import { AGENT_RUN_SUMMARY_SELECT } from "@/constants/agent-runs";
 import prisma from "@/lib/prisma";
 import { appendRunEventTransaction } from "@/lib/agent-run-events";
 import { sanitizeRunnerOutput, type RunnerEvent } from "@/lib/agent-runner";
@@ -58,8 +59,49 @@ function serializeMetadata(value: unknown) {
   return value as Record<string, unknown>;
 }
 
+type RunSummary = Prisma.AgentRunGetPayload<{ select: typeof AGENT_RUN_SUMMARY_SELECT }>;
+
+// The snapshot keeps full skill content for the runner. Clients only need to know which
+// skills were used, so the content is not sent on every run poll.
+function serializeSkillSnapshot(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map(skill => {
+    const entry = skill && typeof skill === "object"
+      ? skill as Record<string, unknown>
+      : {};
+
+    return {
+      id: typeof entry.id === "string" ? entry.id : null,
+      slug: typeof entry.slug === "string" ? entry.slug : "",
+      name: typeof entry.name === "string" ? entry.name : "",
+      version: typeof entry.version === "string" ? entry.version : "",
+    };
+  });
+}
+
+export function serializeAgentRunSummary(run: RunSummary) {
+  return {
+    id: run.id,
+    agentSessionId: run.agentSessionId,
+    repositoryId: run.repositoryId,
+    status: run.status,
+    model: run.model,
+    provider: run.provider,
+    prompt: run.prompt,
+    errorCode: run.errorCode,
+    resultSummary: run.resultSummary,
+    startedAt: iso(run.startedAt),
+    finishedAt: iso(run.finishedAt),
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString(),
+  };
+}
+
 export function serializeAgentRun(run: RunWithRelations) {
-  const skillSnapshot = Array.isArray(run.skillSnapshot) ? run.skillSnapshot : [];
+  const skillSnapshot = serializeSkillSnapshot(run.skillSnapshot);
 
   return {
     id: run.id,

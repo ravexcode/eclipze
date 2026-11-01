@@ -3,7 +3,13 @@ import { randomUUID } from "node:crypto";
 import { after, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { appendRunEvent, serializeAgentRun, startAgentRun } from "@/lib/agent-runs";
+import {
+  appendRunEvent,
+  serializeAgentRun,
+  serializeAgentRunSummary,
+  startAgentRun,
+} from "@/lib/agent-runs";
+import { AGENT_RUN_LIST_LIMIT, AGENT_RUN_SUMMARY_SELECT } from "@/constants/agent-runs";
 import {
   ensureAiCreditWallet,
   findExhaustedUsageWindow,
@@ -46,11 +52,12 @@ export async function GET(request: Request) {
       ...(projectId ? { repository: { projectId, userId: user.id } } : {}),
     },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: AGENT_RUN_LIST_LIMIT,
+    select: AGENT_RUN_SUMMARY_SELECT,
   });
 
   return NextResponse.json(
-    { runs: runs.map(serializeAgentRun) },
+    { runs: runs.map(serializeAgentRunSummary) },
     { headers: PRIVATE_NO_STORE_HEADERS },
   );
 }

@@ -129,6 +129,23 @@ export type AgentRun = {
   events?: AgentRunEvent[];
 };
 
+// The lighter run shape returned by run lists (GET /api/agent-runs).
+export type AgentRunSummary = Pick<
+  AgentRun,
+  | "id"
+  | "agentSessionId"
+  | "repositoryId"
+  | "status"
+  | "model"
+  | "prompt"
+  | "errorCode"
+  | "resultSummary"
+  | "startedAt"
+  | "finishedAt"
+  | "createdAt"
+  | "updatedAt"
+>;
+
 // A read-only, in-memory copy of a repository branch. `paths` lists every text file, and
 // `files` holds the contents of the ones small enough to read.
 export type RepositorySnapshot = {

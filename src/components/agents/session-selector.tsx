@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IconHistory } from "@tabler/icons-react";
 
-import type { AgentRun } from "@/types/agent-runner";
+import type { AgentRunSummary } from "@/types/agent-runner";
 import { AGENT_RUN_STATUS_DOT_CLASSES } from "@/constants/agents";
 import { apiFetch } from "@/utils/api-fetch";
 import { readJson } from "@/utils/json-payload";
@@ -16,7 +16,7 @@ interface Props {
 export default function SessionSelector(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [runs, setRuns] = useState<AgentRun[]>([]);
+  const [runs, setRuns] = useState<AgentRunSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function SessionSelector(props: Props) {
       setIsLoading(true);
       try {
         const response = await apiFetch("/api/agent-runs", { cache: "no-store" });
-        const payload = await readJson(response) as { runs?: AgentRun[] };
+        const payload = await readJson(response) as { runs?: AgentRunSummary[] };
         if (cancelled) return;
         if (response.ok) setRuns(payload.runs ?? []);
       } catch {
