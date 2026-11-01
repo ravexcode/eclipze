@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { createInitialAiCreditGrant } from "@/lib/ai-credits";
 import {
   createVerificationCode,
+  ensureVerificationRequesterTokenHash,
   getRequestIp,
   hashPassword,
   isValidEmail,
@@ -17,15 +18,28 @@ import { sendAuthCodeEmail } from "@/lib/auth-email";
 import { enforceRateLimits } from "@/lib/rate-limit";
 import { notifySecurityEvent } from "@/lib/security-email";
 
-async function sendVerificationCode(userId: string, email: string) {
+async function sendVerificationCode(input: {
+  userId: string;
+  email: string;
+  passwordHash: string;
+  username: string;
+  requesterTokenHash: string;
+}) {
+  // The code works only in this browser and carries the credentials it chose, which
+  // replace any password already on the account once the email is verified.
   const verification = await createVerificationCode({
-    userId,
+    userId: input.userId,
     purpose: "EMAIL_VERIFICATION",
+    requesterTokenHash: input.requesterTokenHash,
+    pendingCredentials: {
+      passwordHash: input.passwordHash,
+      username: input.username,
+    },
   });
 
   try {
     await sendAuthCodeEmail({
-      to: email,
+      to: input.email,
       code: verification.code,
       purpose: "EMAIL_VERIFICATION",
     });
@@ -109,15 +123,26 @@ export async function POST(request: Request) {
   // Hashed on every path, so a known email takes as long to answer as a new one.
   const passwordHash = await hashPassword(password);
 
+  // Set on every path too, so the Set-Cookie header does not reveal which emails exist.
+  const requesterTokenHash = await ensureVerificationRequesterTokenHash();
+
   if (existingByEmail) {
     // Answer exactly like a new sign-up, so this endpoint does not reveal which emails
-    // have accounts. An unverified owner gets a fresh code to finish verification.
+    // have accounts. For an unverified account, the code applies this request's password
+    // and username on verification, so a password chosen by whoever pre-registered the
+    // email is never kept.
     if (existingByEmail.emailVerifiedAt) {
       notifySecurityEvent(request, { to: email, kind: "SIGNUP_ATTEMPT" });
       return createVerificationStepResponse(email, true);
     }
 
-    const isSent = await sendVerificationCode(existingByEmail.id, email);
+    const isSent = await sendVerificationCode({
+      userId: existingByEmail.id,
+      email,
+      passwordHash,
+      username,
+      requesterTokenHash,
+    });
     return createVerificationStepResponse(email, isSent);
   }
 
@@ -134,6 +159,12 @@ export async function POST(request: Request) {
     return createdUser;
   });
 
-  const isSent = await sendVerificationCode(user.id, email);
+  const isSent = await sendVerificationCode({
+    userId: user.id,
+    email,
+    passwordHash,
+    username,
+    requesterTokenHash,
+  });
   return createVerificationStepResponse(email, isSent);
 }

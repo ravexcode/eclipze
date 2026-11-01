@@ -4,3 +4,7 @@ export const DUMMY_PASSWORD_HASH = "scrypt:e60661cd6f80bff706c5ae629738e065:70dc
 
 // Server secret that keys verification code hashes. Rotating it invalidates active codes.
 export const AUTH_CODE_SECRET_ENV = "AUTH_CODE_SECRET";
+
+// Cookie that ties an email verification code to the browser that requested it.
+export const VERIFICATION_REQUESTER_COOKIE = "verification_token";
+export const VERIFICATION_REQUESTER_COOKIE_PATH = "/api/auth";

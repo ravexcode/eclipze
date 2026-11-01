@@ -4,6 +4,7 @@ import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import {
   createVerificationCode,
+  ensureVerificationRequesterTokenHash,
   getRequestIp,
   isValidEmail,
   normalizeEmail,
@@ -48,6 +49,10 @@ export async function POST(request: Request) {
     message: "If this email has an account waiting for verification, we sent a new code.",
   });
 
+  // Set for every request, known email or not, so the Set-Cookie header does not reveal
+  // which accounts exist.
+  const requesterTokenHash = await ensureVerificationRequesterTokenHash();
+
   const user = await prisma.user.findUnique({
     where: {
       email,
@@ -58,9 +63,13 @@ export async function POST(request: Request) {
     return genericResponse;
   }
 
+  // The new code works only in this browser. It keeps the sign-up credentials only when
+  // this is the browser that chose them.
   const verification = await createVerificationCode({
     userId: user.id,
     purpose,
+    requesterTokenHash,
+    inheritPendingCredentials: true,
   });
 
   try {
