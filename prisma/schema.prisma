@@ -303,6 +303,7 @@ model Agent {
   skillSelections AgentSkillSelection[]
 
   @@index([userId, status])
+  @@index([mcpConnectionId])
   @@map("agents")
 }
 
@@ -417,6 +418,7 @@ model AgentRun {
   @@index([agentSessionId, createdAt])
   @@index([repositoryId])
   @@index([status, updatedAt])
+  @@index([mcpConnectionId])
   @@map("agent_runs")
 }
 
@@ -470,6 +472,7 @@ model AiCreditLedgerEntry {
 
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
+  @@index([userId, type, createdAt])
   @@map("ai_credit_ledger_entries")
 }
 
@@ -546,7 +549,6 @@ model AiProviderConnection {
   user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider])
-  @@index([userId])
   @@map("ai_provider_connections")
 }
 
@@ -577,7 +579,6 @@ model LegalAcceptance {
   user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, document, version])
-  @@index([userId])
   @@map("legal_acceptances")
 }
 
@@ -610,7 +611,6 @@ model DatabaseConnection {
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider])
-  @@index([userId])
   @@map("database_connections")
 }
 
