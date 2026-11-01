@@ -35,6 +35,12 @@ export const AI_PROVIDERS = [
     description: "Run Cursor cloud agents with your Cursor API key.",
     kind: "api-key",
   },
+  {
+    id: "OLLAMA",
+    label: "Ollama",
+    description: "Use models from your own Ollama server.",
+    kind: "server-url",
+  },
 ] as const;
 
 export type AiProviderConfig = (typeof AI_PROVIDERS)[number];
@@ -46,6 +52,7 @@ export type AiProviderConnection = {
   connected: boolean;
   keyHint: string | null;
   model: string | null;
+  baseUrl: string | null;
   updatedAt: string;
 };
 
@@ -68,4 +75,11 @@ export type AiCreditUsage = {
   monthlyUsedCredits: number;
   monthlyResetAt: string;
   usageWindows: AiCreditUsageWindow[];
+};
+
+// Credentials used to call a model provider. baseUrl is set for self-hosted providers.
+export type ProviderCredential = {
+  apiKey: string;
+  isServiceKey: boolean;
+  baseUrl?: string | null;
 };

@@ -1,58 +1,15 @@
 import "server-only";
 
-import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { extname, join, relative, resolve, sep } from "node:path";
-
-import { resolveAllowedCommand, runAllowedCommand, sanitizeRunnerOutput, type RunnerEvent } from "@/lib/agent-runner";
-import { isSafeWorkspacePath } from "@/lib/workspace-repository";
+import { sanitizeRunnerOutput, type RunnerEvent } from "@/lib/agent-runner";
 import { getProviderCredential } from "@/lib/ai-provider-credentials";
 import { requestChatCompletion, runCursorAgent, type ChatMessage } from "@/lib/agent-providers";
 import { callMcpAgentTool } from "@/lib/mcp-client";
 import prisma from "@/lib/prisma";
 import { PROVIDER_LABELS } from "@/constants/agent-providers";
 import { AGENT_RESPONSE_STYLE_INSTRUCTIONS } from "@/constants/agent-completion";
-import type { AgentPermissionMode } from "@/types/agent-runner";
-import type { AgentProvider, AiProvider } from "@/types/ai";
-
-const IGNORED_DIRECTORIES = new Set([
-  ".git",
-  ".next",
-  ".turbo",
-  "build",
-  "coverage",
-  "dist",
-  "node_modules",
-  "vendor",
-]);
-
-const TEXT_EXTENSIONS = new Set([
-  ".c",
-  ".cpp",
-  ".css",
-  ".dart",
-  ".go",
-  ".h",
-  ".html",
-  ".java",
-  ".js",
-  ".jsx",
-  ".kt",
-  ".md",
-  ".mjs",
-  ".py",
-  ".rs",
-  ".scss",
-  ".sh",
-  ".sql",
-  ".swift",
-  ".toml",
-  ".ts",
-  ".tsx",
-  ".txt",
-  ".xml",
-  ".yaml",
-  ".yml",
-]);
+import type { AgentPermissionMode, RepositorySnapshot } from "@/types/agent-runner";
+import type { AgentProvider, AiProvider, ProviderCredential } from "@/types/ai";
+import { isSensitiveRepositoryPath, normalizeRequestedRepositoryPath } from "@/utils/repository-snapshot";
 
 const MAX_TREE_FILES = 160;
 const MAX_CONTEXT_FILES = 12;
@@ -64,50 +21,6 @@ type SkillSnapshot = {
   version: string;
   content: string;
 };
-
-function isSensitiveFile(fileName: string) {
-  const normalized = fileName.toLowerCase();
-  return normalized.startsWith(".env") ||
-    normalized === ".npmrc" ||
-    normalized === ".pypirc" ||
-    normalized.includes("credentials") ||
-    normalized.includes("private-key") ||
-    normalized.endsWith(".pem") ||
-    normalized.endsWith(".key");
-}
-
-async function listTextFiles(directory: string, root: string, depth = 0): Promise<string[]> {
-  if (depth > 5) return [];
-
-  let entries;
-  try {
-    entries = await readdir(directory, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-
-  const paths: string[] = [];
-
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    if (isSensitiveFile(entry.name)) continue;
-    if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) continue;
-
-    const absolutePath = join(directory, entry.name);
-    const relativePath = relative(root, absolutePath);
-
-    if (!isSafeWorkspacePath(root, absolutePath)) continue;
-
-    if (entry.isDirectory()) {
-      paths.push(...await listTextFiles(absolutePath, root, depth + 1));
-    } else if (entry.isFile() && TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
-      paths.push(relativePath);
-    }
-
-    if (paths.length >= MAX_TREE_FILES) break;
-  }
-
-  return paths;
-}
 
 function prioritizeRepositoryFiles(paths: string[]) {
   const priority = [
@@ -129,24 +42,23 @@ function prioritizeRepositoryFiles(paths: string[]) {
   });
 }
 
-async function buildRepositoryContext(repositoryPath: string) {
-  const files = await listTextFiles(repositoryPath, repositoryPath);
-  const tree = files.slice(0, MAX_TREE_FILES).join("\n");
+function buildRepositoryContext(snapshot: RepositorySnapshot) {
+  const tree = snapshot.paths.slice(0, MAX_TREE_FILES).join("\n");
   const sections: string[] = [];
   let totalCharacters = 0;
 
-  for (const filePath of prioritizeRepositoryFiles(files).slice(0, MAX_CONTEXT_FILES)) {
-    try {
-      const content = (await readFile(join(repositoryPath, filePath), "utf8"))
-        .slice(0, MAX_FILE_CHARACTERS);
-      const section = `### ${filePath}\n${content}`;
+  for (const filePath of prioritizeRepositoryFiles(snapshot.paths).slice(0, MAX_CONTEXT_FILES)) {
+    const content = snapshot.files.get(filePath);
 
-      if (totalCharacters + section.length > MAX_CONTEXT_CHARACTERS) break;
-      sections.push(section);
-      totalCharacters += section.length;
-    } catch {
-      // Skip files that disappear or cannot be decoded after the repository scan.
+    if (content === undefined) {
+      continue;
     }
+
+    const section = `### ${filePath}\n${content.slice(0, MAX_FILE_CHARACTERS)}`;
+
+    if (totalCharacters + section.length > MAX_CONTEXT_CHARACTERS) break;
+    sections.push(section);
+    totalCharacters += section.length;
   }
 
   return `Repository file tree:\n${tree}\n\nSelected repository files:\n${sections.join("\n\n")}`;
@@ -179,12 +91,14 @@ function readAssistantText(value: unknown) {
   }).join("\n");
 }
 
+// Repository access is read-only: agents work on an in-memory snapshot of the branch and
+// cannot change files or run commands.
 const AGENT_TOOLS = [
   {
     type: "function",
     function: {
       name: "read_file",
-      description: "Read a text file from the isolated repository workspace.",
+      description: "Read a text file from the read-only repository snapshot. Use a path from the repository file tree.",
       parameters: {
         type: "object",
         properties: { path: { type: "string" } },
@@ -193,138 +107,39 @@ const AGENT_TOOLS = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "write_file",
-      description: "Create or replace a text file in the isolated repository workspace.",
-      parameters: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          content: { type: "string" },
-        },
-        required: ["path", "content"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_command",
-      description: "Run one of the approved project commands in the isolated repository workspace.",
-      parameters: {
-        type: "object",
-        properties: {
-          commandKey: {
-            type: "string",
-            enum: [
-              "git-status", "git-diff-stat", "git-rev-parse", "pnpm-test", "pnpm-build",
-              "pnpm-typecheck", "npm-test", "npm-build", "npm-typecheck", "pytest", "go-test",
-            ],
-          },
-        },
-        required: ["commandKey"],
-        additionalProperties: false,
-      },
-    },
-  },
 ];
 
-function isSensitiveRepositoryPath(filePath: string) {
-  const normalized = filePath.toLowerCase();
-  const fileName = normalized.split(/[\\/]/).at(-1) ?? normalized;
-  const blockedDirectory = normalized.split(/[\\/]/).some(part =>
-    [".git", ".next", "node_modules", "vendor"].includes(part),
-  );
-  return blockedDirectory || fileName.startsWith(".env") || fileName === ".npmrc" || fileName === ".pypirc" ||
-    fileName.includes("credentials") || fileName.includes("private-key") ||
-    fileName.endsWith(".pem") || fileName.endsWith(".key");
-}
+function readSnapshotFile(snapshot: RepositorySnapshot, requestedPath: unknown) {
+  if (typeof requestedPath !== "string") {
+    throw new Error("A file path is required.");
+  }
 
-async function getSafeRepositoryPath(repositoryPath: string, filePath: string) {
-  if (!filePath || filePath.includes("\\") || isSensitiveRepositoryPath(filePath)) {
+  const filePath = normalizeRequestedRepositoryPath(requestedPath);
+
+  if (!filePath || isSensitiveRepositoryPath(filePath)) {
     throw new Error("That repository path is not allowed.");
   }
 
-  const normalizedPath = resolve(repositoryPath, filePath);
-  if (!isSafeWorkspacePath(repositoryPath, normalizedPath)) {
-    throw new Error("That repository path is outside the isolated workspace.");
-  }
+  const content = snapshot.files.get(filePath);
 
-  const pathParts = relative(repositoryPath, normalizedPath).split(sep).filter(Boolean);
-  let currentPath = repositoryPath;
-  for (const part of pathParts.slice(0, -1)) {
-    currentPath = join(currentPath, part);
-    try {
-      if ((await lstat(currentPath)).isSymbolicLink()) throw new Error("Symbolic links are not allowed.");
-    } catch (error) {
-      if (error instanceof Error && error.message === "Symbolic links are not allowed.") throw error;
-      break;
-    }
-  }
-
-  return normalizedPath;
-}
-
-async function runAgentTool(input: {
-  runId: string;
-  repositoryPath: string;
-  name: string;
-  args: Record<string, unknown>;
-  onEvent(event: RunnerEvent): Promise<void> | void;
-}) {
-  if (input.name === "read_file") {
-    if (typeof input.args.path !== "string") throw new Error("A file path is required.");
-    const filePath = await getSafeRepositoryPath(input.repositoryPath, input.args.path);
-    const stats = await lstat(filePath);
-    if (!stats.isFile() || stats.size > MAX_FILE_CHARACTERS * 2) throw new Error("Only small text files can be read.");
-    const content = await readFile(filePath, "utf8");
+  if (content !== undefined) {
     return content.slice(0, MAX_FILE_CHARACTERS);
   }
 
-  if (input.name === "write_file") {
-    if (typeof input.args.path !== "string" || typeof input.args.content !== "string") {
-      throw new Error("A file path and content are required.");
-    }
-    if (input.args.content.length > 100_000) throw new Error("The requested file is too large.");
-
-    const filePath = await getSafeRepositoryPath(input.repositoryPath, input.args.path);
-    const parentPath = resolve(filePath, "..");
-    const relativeParent = relative(input.repositoryPath, parentPath);
-    let currentPath = input.repositoryPath;
-    for (const part of relativeParent.split(sep).filter(Boolean)) {
-      currentPath = join(currentPath, part);
-      try {
-        if ((await lstat(currentPath)).isSymbolicLink()) throw new Error("Symbolic links are not allowed.");
-      } catch (error) {
-        if (error instanceof Error && error.message === "Symbolic links are not allowed.") throw error;
-      }
-    }
-
-    try {
-      if ((await lstat(filePath)).isSymbolicLink()) throw new Error("Symbolic links are not allowed.");
-    } catch (error) {
-      if (error instanceof Error && error.message === "Symbolic links are not allowed.") throw error;
-    }
-
-    await mkdir(parentPath, { recursive: true });
-    await writeFile(filePath, input.args.content, { encoding: "utf8", flag: "w" });
-    return `Wrote ${relative(input.repositoryPath, filePath)}.`;
+  if (snapshot.paths.includes(filePath)) {
+    throw new Error("Only small text files can be read.");
   }
 
-  if (input.name === "run_command") {
-    const command = resolveAllowedCommand(input.args.commandKey);
-    if (!command) throw new Error("The requested command is not allowed.");
+  throw new Error("That file is not in the repository snapshot.");
+}
 
-    const result = await runAllowedCommand({
-      runId: input.runId,
-      workspacePath: input.repositoryPath,
-      command: command.key,
-      onEvent: input.onEvent,
-    });
-    return `Command finished with status ${result.status} and exit code ${result.exitCode ?? "unknown"}.`;
+function runAgentTool(input: {
+  snapshot: RepositorySnapshot;
+  name: string;
+  args: Record<string, unknown>;
+}) {
+  if (input.name === "read_file") {
+    return readSnapshotFile(input.snapshot, input.args.path);
   }
 
   throw new Error("The requested tool is not available.");
@@ -336,7 +151,7 @@ type AgentToolDefinition = NonNullable<Parameters<typeof requestChatCompletion>[
 // Used by repository runs and the ERD agent so both resolve credentials and bill the same way.
 export async function runAgentToolLoop(input: {
   provider: AiProvider;
-  credential: { apiKey: string; isServiceKey: boolean };
+  credential: ProviderCredential;
   model: string;
   userId: string;
   messages: ChatMessage[];
@@ -357,6 +172,7 @@ export async function runAgentToolLoop(input: {
     const completion = await requestChatCompletion({
       provider: input.provider,
       apiKey: input.credential.apiKey,
+      baseUrl: input.credential.baseUrl,
       model: input.model,
       userId: input.userId,
       messages,
@@ -413,29 +229,27 @@ export async function runAgentToolLoop(input: {
 
 export async function generateAgentResponse(input: {
   userId: string;
-  runId: string;
   provider: AgentProvider;
   mcpConnectionId: string | null;
   model: string;
   permissionMode: AgentPermissionMode;
   prompt: string;
-  repositoryPath: string;
+  repositorySnapshot: RepositorySnapshot;
   repositoryUrl: string;
   defaultBranch: string;
   skillSnapshot: unknown;
   isCancelled(): Promise<boolean>;
   onEvent(event: RunnerEvent): Promise<void> | void;
-  requestApproval(toolName: string, toolInput: Record<string, unknown>): Promise<"APPROVED" | "DENIED" | "CANCELLED">;
 }) {
   const skills = readSkillSnapshots(input.skillSnapshot);
-  const repositoryContext = await buildRepositoryContext(input.repositoryPath);
+  const repositoryContext = buildRepositoryContext(input.repositorySnapshot);
   const skillInstructions = skills.length > 0
     ? skills.map(skill => `## ${skill.name} (v${skill.version})\n${skill.content}`).join("\n\n")
     : "No additional skills were selected.";
   const mayUseTools = input.permissionMode === "USER_APPROVE" || input.permissionMode === "AUTO_APPROVE";
   const modeInstructions = input.permissionMode === "PLAN"
     ? "Create an actionable plan only. Break broad outcomes into concise, feature-sized tasks that are ready to review or turn into issues. Include acceptance criteria, dependencies, and open questions when relevant. Do not claim that issues were created. Do not attempt to change files or execute commands."
-    : "Complete the requested task using the available repository tools. Changes remain inside the isolated repository workspace. Do not commit, push, deploy, or access data outside the workspace.";
+    : "Complete the requested task using the read_file tool to inspect the repository. Repository access is read-only: you cannot change files, run commands, commit, or push. When the task needs code changes, describe them precisely with file paths and code so the user can apply them.";
 
   if (input.provider === "MCP") {
     const connection = input.mcpConnectionId
@@ -520,23 +334,14 @@ export async function generateAgentResponse(input: {
     messages,
     tools: mayUseTools ? AGENT_TOOLS : undefined,
     maxCycles: 8,
+    // Reading the snapshot cannot change anything, so file reads never wait for approval.
     runTool: async (toolName, toolArgs) => {
-      if (input.permissionMode === "USER_APPROVE") {
-        const approval = await input.requestApproval(toolName, toolArgs);
-        if (approval === "CANCELLED") throw new Error("Task cancelled while waiting for approval.");
-        if (approval === "DENIED") {
-          return "The user denied this action. Do not retry the same action; continue with an alternative or explain the limitation.";
-        }
-      }
-
       await input.onEvent({ type: "SYSTEM", message: `Running ${toolName}.` });
       try {
-        const result = await runAgentTool({
-          runId: input.runId,
-          repositoryPath: input.repositoryPath,
+        const result = runAgentTool({
+          snapshot: input.repositorySnapshot,
           name: toolName,
           args: toolArgs,
-          onEvent: input.onEvent,
         });
         return sanitizeRunnerOutput(result).slice(0, 16_000);
       } catch (error) {
@@ -553,5 +358,5 @@ export async function generateAgentResponse(input: {
     };
   }
 
-  throw new Error("This task reached its tool-use limit. Review the isolated changes and send a follow-up task.");
+  throw new Error("This task reached its tool-use limit. Send a follow-up task to continue.");
 }

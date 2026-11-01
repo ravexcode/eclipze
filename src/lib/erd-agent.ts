@@ -17,7 +17,7 @@ import type { ChatMessage } from "@/lib/agent-providers";
 import { DATABASE_PROVIDER_CLIENTS } from "@/lib/database-providers";
 import type { DatabaseCredential } from "@/lib/database-providers/types";
 import { parseErdDocument } from "@/lib/erd";
-import type { AiProvider } from "@/types/ai";
+import type { AiProvider, ProviderCredential } from "@/types/ai";
 import type { ErdDatabaseChange, ErdDocument } from "@/types/erd";
 import {
   buildErdFromAgentSchema,
@@ -138,7 +138,7 @@ async function runErdAgentTool(name: string, args: Record<string, unknown>, stat
 
 export async function runErdAgent(input: {
   provider: AiProvider;
-  credential: { apiKey: string; isServiceKey: boolean };
+  credential: ProviderCredential;
   model: string;
   userId: string;
   messages: Array<{ role: "user" | "assistant"; content: string }>;

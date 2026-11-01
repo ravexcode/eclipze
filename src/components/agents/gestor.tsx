@@ -378,8 +378,8 @@ export default function AgentsGestor() {
             Repositories
           </p>
           <p className="mt-1 text-xs text-foreground-off">
-            Connect a public HTTPS repository so agent runs can clone and inspect
-            it.
+            Connect a public GitHub, GitLab, or Bitbucket repository so agent runs
+            can read a snapshot of it.
           </p>
         </div>
 

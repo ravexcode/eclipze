@@ -1,6 +1,6 @@
 import type { AgentProvider, AiProvider } from "@/types/ai";
 
-export type ExternalAgentProvider = Extract<AiProvider, "CLAUDE" | "GPT" | "CURSOR">;
+export type ExternalAgentProvider = Extract<AiProvider, "CLAUDE" | "GPT" | "CURSOR" | "OLLAMA">;
 
 export const EXTERNAL_AGENT_PROVIDERS: Record<ExternalAgentProvider, {
   agentName: string;
@@ -22,6 +22,12 @@ export const EXTERNAL_AGENT_PROVIDERS: Record<ExternalAgentProvider, {
     label: "Cursor",
     defaultModel: "default",
   },
+  // Ollama always connects with a model that is installed on the user's server.
+  OLLAMA: {
+    agentName: "Ollama",
+    label: "Ollama",
+    defaultModel: "llama3.1",
+  },
 };
 
 export const PROVIDER_LABELS: Record<AgentProvider, string> = {
@@ -31,6 +37,7 @@ export const PROVIDER_LABELS: Record<AgentProvider, string> = {
   ZAI: "Z.Ai",
   XAI: "xAI",
   CURSOR: "Cursor",
+  OLLAMA: "Ollama",
   MCP: "MCP agent",
 };
 

@@ -120,12 +120,12 @@ export const AGENT_PERMISSION_MODE_OPTIONS: Array<{
     {
       value: "USER_APPROVE",
       label: "Approve actions",
-      description: "Review each action before it runs.",
+      description: "Review each action before it runs. Repository access is read-only, so file reads run without approval.",
     },
     {
       value: "AUTO_APPROVE",
       label: "Auto approve",
-      description: "Run actions allowed for this task.",
+      description: "Read repository files as needed for this task. Repository access is read-only.",
     },
   ];
 

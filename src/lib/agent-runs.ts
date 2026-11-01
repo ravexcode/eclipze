@@ -8,18 +8,9 @@ import type { AgentPermissionMode, AgentRunEventType } from "@/types/agent-runne
 import { DEFAULT_AGENT_PERMISSION_MODE } from "@/constants/agents";
 import prisma from "@/lib/prisma";
 import { appendRunEventTransaction } from "@/lib/agent-run-events";
-import {
-  cancelCommandForRun,
-  cleanupRunWorkspace,
-  createRunWorkspace,
-  getIsolatedWorkspaceDiff,
-  materializePublicRepository,
-  resolveAllowedCommand,
-  runAllowedCommand,
-  sanitizeRunnerOutput,
-  type RunnerEvent,
-} from "@/lib/agent-runner";
-import { join } from "node:path";
+import { sanitizeRunnerOutput, type RunnerEvent } from "@/lib/agent-runner";
+import { downloadRepositorySnapshot } from "@/lib/repository-snapshot";
+import type { WorkspaceRepositoryProvider } from "@/types/agent-runner";
 
 type RunWithRelations = {
   id: string;
@@ -114,67 +105,6 @@ export async function appendRunEvent(runId: string, event: RunnerEvent) {
   });
 }
 
-export async function requestAgentToolApproval(input: {
-  runId: string;
-  userId: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-}) {
-  const approval = await prisma.agentRunApproval.create({
-    data: {
-      runId: input.runId,
-      userId: input.userId,
-      toolName: input.toolName,
-      input: structuredClone(input.toolInput) as Prisma.InputJsonValue,
-    },
-  });
-
-  await prisma.agentRun.update({
-    where: { id: input.runId },
-    data: { status: "WAITING_FOR_APPROVAL" },
-  });
-  await appendRunEvent(input.runId, {
-    type: "APPROVAL",
-    message: `Approval required: ${input.toolName}`,
-    metadata: { approvalId: approval.id, toolName: input.toolName, input: input.toolInput },
-  });
-
-  const expiresAt = Date.now() + 10 * 60_000;
-  while (Date.now() < expiresAt) {
-    const currentApproval = await prisma.agentRunApproval.findUnique({
-      where: { id: approval.id },
-      select: {
-        status: true,
-        run: { select: { status: true, cancelRequestedAt: true } },
-      },
-    });
-    const run = currentApproval?.run;
-
-    if (currentApproval?.status === "APPROVED") {
-      if (!run?.cancelRequestedAt && run?.status !== "CANCELLED") {
-        await prisma.agentRun.update({ where: { id: input.runId }, data: { status: "RUNNING" } });
-      }
-      return "APPROVED" as const;
-    }
-    if (currentApproval?.status === "DENIED") {
-      if (!run?.cancelRequestedAt && run?.status !== "CANCELLED") {
-        await prisma.agentRun.update({ where: { id: input.runId }, data: { status: "RUNNING" } });
-      }
-      return "DENIED" as const;
-    }
-    if (!run || run.status === "CANCELLED" || run.cancelRequestedAt) return "CANCELLED" as const;
-
-    await new Promise(resolve => setTimeout(resolve, 2_000));
-  }
-
-  await prisma.agentRunApproval.updateMany({
-    where: { id: approval.id, status: "PENDING" },
-    data: { status: "DENIED", decidedAt: new Date() },
-  });
-  await prisma.agentRun.update({ where: { id: input.runId }, data: { status: "RUNNING" } });
-  return "DENIED" as const;
-}
-
 async function updateRunFailure(runId: string, errorCode: string, resultSummary: string, status: "FAILED" | "BLOCKED" = "FAILED") {
   await prisma.agentRun.update({
     where: { id: runId },
@@ -197,8 +127,6 @@ async function executeAgentRun(runId: string, userId: string) {
     return;
   }
 
-  const workspacePath = await createRunWorkspace(userId, run.id);
-  const repositoryPath = join(workspacePath, "repo");
   let creditsSettled = false;
   let eventQueue = Promise.resolve();
   const persistEvent = (event: RunnerEvent) => {
@@ -222,25 +150,34 @@ async function executeAgentRun(runId: string, userId: string) {
     });
     await persistEvent({ type: "SYSTEM", message: "Run started." });
 
-    const cloneResult = await materializePublicRepository({
-      repositoryUrl: run.repository.repositoryUrl,
-      defaultBranch: run.repository.defaultBranch,
-      destinationPath: repositoryPath,
-      onEvent: persistEvent,
+    await persistEvent({
+      type: "SYSTEM",
+      message: `Downloading a read-only snapshot of ${run.repository.repositoryUrl} (${run.repository.defaultBranch}).`,
     });
 
-    if (!cloneResult.ok) {
+    const snapshotResult = await downloadRepositorySnapshot({
+      provider: run.repository.provider as WorkspaceRepositoryProvider,
+      repositoryUrl: run.repository.repositoryUrl,
+      branch: run.repository.defaultBranch,
+    });
+
+    if (!snapshotResult.ok) {
       await persistEvent({
         type: "ERROR",
-        message: cloneResult.message,
-        metadata: { code: cloneResult.code },
+        message: snapshotResult.message,
+        metadata: { code: snapshotResult.code },
       });
-      await updateRunFailure(run.id, cloneResult.code, cloneResult.message);
+      await updateRunFailure(run.id, snapshotResult.code, snapshotResult.message);
       await eventQueue;
       return;
     }
 
-    await persistEvent({ type: "SYSTEM", message: "Repository ready." });
+    const repositorySnapshot = snapshotResult.snapshot;
+
+    await persistEvent({
+      type: "SYSTEM",
+      message: `Repository ready: ${repositorySnapshot.paths.length} text files, read-only.`,
+    });
 
     const cancelled = await prisma.agentRun.findUnique({
       where: { id: run.id },
@@ -248,7 +185,7 @@ async function executeAgentRun(runId: string, userId: string) {
     });
 
     if (!cancelled || cancelled.status === "CANCELLED" || cancelled.cancelRequestedAt) {
-      await persistEvent({ type: "SYSTEM", message: "Run cancelled after clone." });
+      await persistEvent({ type: "SYSTEM", message: "Run cancelled after the repository download." });
       await eventQueue;
       return;
     }
@@ -262,7 +199,6 @@ async function executeAgentRun(runId: string, userId: string) {
 
     const completion = await generateAgentResponse({
       userId,
-      runId: run.id,
       provider: run.provider as AgentProvider,
       mcpConnectionId: run.mcpConnectionId,
       model: run.model,
@@ -270,7 +206,7 @@ async function executeAgentRun(runId: string, userId: string) {
         ? DEFAULT_AGENT_PERMISSION_MODE
         : run.permissionMode as AgentPermissionMode,
       prompt: run.prompt,
-      repositoryPath,
+      repositorySnapshot,
       repositoryUrl: run.repository.repositoryUrl,
       defaultBranch: run.repository.defaultBranch,
       skillSnapshot: run.skillSnapshot,
@@ -282,12 +218,6 @@ async function executeAgentRun(runId: string, userId: string) {
         return !current || current.status === "CANCELLED" || Boolean(current.cancelRequestedAt);
       },
       onEvent: persistEvent,
-      requestApproval: (toolName, toolInput) => requestAgentToolApproval({
-        runId: run.id,
-        userId,
-        toolName,
-        toolInput,
-      }),
     });
 
     if (run.creditReservation > 0) {
@@ -319,14 +249,12 @@ async function executeAgentRun(runId: string, userId: string) {
     });
 
     if (!completionRun || completionRun.status === "CANCELLED" || completionRun.cancelRequestedAt) {
-      const changePatch = await getIsolatedWorkspaceDiff(repositoryPath);
       await prisma.agentRun.update({
         where: { id: run.id },
         data: {
           status: "CANCELLED",
           errorCode: "CANCELLED",
           resultSummary: null,
-          changePatch: changePatch || null,
           finishedAt: new Date(),
         },
       });
@@ -343,7 +271,6 @@ async function executeAgentRun(runId: string, userId: string) {
       });
     }
 
-    const changePatch = await getIsolatedWorkspaceDiff(repositoryPath);
     const resultSummary = sanitizeRunnerOutput(completion.answer).slice(0, 500);
     await persistEvent({ type: "RESULT", message: "Task completed." });
 
@@ -353,7 +280,6 @@ async function executeAgentRun(runId: string, userId: string) {
         status: "SUCCEEDED",
         errorCode: null,
         resultSummary,
-        changePatch: changePatch || null,
         finishedAt: new Date(),
       },
     });
@@ -365,13 +291,11 @@ async function executeAgentRun(runId: string, userId: string) {
       select: { status: true, cancelRequestedAt: true },
     }).catch(() => null);
     if (cancellation?.status === "CANCELLED" || cancellation?.cancelRequestedAt) {
-      const changePatch = await getIsolatedWorkspaceDiff(repositoryPath);
       await prisma.agentRun.update({
         where: { id: run.id },
         data: {
           status: "CANCELLED",
           errorCode: "CANCELLED",
-          changePatch: changePatch || null,
           finishedAt: new Date(),
         },
       });
@@ -380,14 +304,12 @@ async function executeAgentRun(runId: string, userId: string) {
       return;
     }
     await persistEvent({ type: "ERROR", message: "Runner failed unexpectedly." });
-    const changePatch = await getIsolatedWorkspaceDiff(repositoryPath);
     await prisma.agentRun.update({
       where: { id: run.id },
       data: {
         status: "FAILED",
         errorCode: "RUNNER_ERROR",
         resultSummary: message.slice(0, 500),
-        changePatch: changePatch || null,
         finishedAt: new Date(),
       },
     });
@@ -396,12 +318,12 @@ async function executeAgentRun(runId: string, userId: string) {
     if (run.creditReservation > 0 && !creditsSettled) {
       await releaseAiCreditReservation({ userId, runId: run.id, reservedCredits: run.creditReservation }).catch(() => undefined);
     }
-    await cleanupRunWorkspace(userId, run.id);
   }
 }
 
+// Returns the run's promise so the route can keep the function alive with after().
 export function startAgentRun(runId: string, userId: string) {
-  void executeAgentRun(runId, userId).catch(async () => {
+  return executeAgentRun(runId, userId).catch(async () => {
     await updateRunFailure(runId, "RUNNER_ERROR", "Runner could not start.").catch(() => undefined);
   });
 }
@@ -424,31 +346,8 @@ export async function cancelAgentRun(runId: string, userId: string) {
 
   if (run.status === "RUNNING" || run.status === "WAITING_FOR_APPROVAL") {
     await prisma.agentRun.update({ where: { id: run.id }, data: { cancelRequestedAt: new Date() } });
-    cancelCommandForRun(run.id);
     return prisma.agentRun.findUnique({ where: { id: run.id } });
   }
 
   return run;
-}
-
-export async function runCommandInMaterializedWorkspace(input: {
-  runId: string;
-  userId: string;
-  workspacePath: string;
-  commandKey: string;
-}) {
-  const command = resolveAllowedCommand(input.commandKey);
-
-  if (!command) {
-    throw new Error("COMMAND_NOT_ALLOWED");
-  }
-
-  return runAllowedCommand({
-    runId: input.runId,
-    workspacePath: input.workspacePath,
-    command: command.key,
-    onEvent: async event => {
-      await appendRunEvent(input.runId, event);
-    },
-  });
 }

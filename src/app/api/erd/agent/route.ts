@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   const provider = agent.provider;
 
   if (!isErdAgentProvider(provider)) {
-    return erdJson({ message: "The ERD agent works with OpenRouter, Claude, or OpenAI agents. Choose one of those." }, 400);
+    return erdJson({ message: "The ERD agent works with OpenRouter, Claude, OpenAI, or Ollama agents. Choose one of those." }, 400);
   }
 
   let credential;

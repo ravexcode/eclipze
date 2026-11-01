@@ -146,7 +146,7 @@ export const ERD_AGENT_ESTIMATED_OUTPUT_TOKENS = 4_096;
 export const ERD_AGENT_PROMPT_OVERHEAD_CHARACTERS = 12_000;
 // Chat-completion providers the ERD agent can run on. OpenRouter on the
 // Eclipse service key spends AI credits; saved user keys bill their provider.
-export const ERD_AGENT_PROVIDERS: readonly AiProvider[] = ["OPENROUTER", "CLAUDE", "GPT"];
+export const ERD_AGENT_PROVIDERS: readonly AiProvider[] = ["OPENROUTER", "CLAUDE", "GPT", "OLLAMA"];
 
 // New tables from the agent are laid out in a grid below the existing ones.
 export const ERD_AGENT_LAYOUT_COLUMNS = 4;

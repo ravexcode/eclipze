@@ -40,10 +40,11 @@ export const LEGAL_TERMS_I_NOVEMBER_MMXXVI: LegalDocumentVersion = {
     {
       title: "AI and connected services",
       paragraphs: [
-        "When you start an AI task, its prompt and the content of selected skills are sent to the AI provider that runs it, such as Anthropic, OpenAI, OpenRouter, or Cursor, to process the request. Other connected services may receive information needed to provide a feature you request. Each provider has its own terms and privacy notice.",
+        "When you start an AI task, its prompt and the content of selected skills are sent to the AI provider that runs it, such as Anthropic, OpenAI, OpenRouter, Cursor, or your own Ollama server, to process the request. Other connected services may receive information needed to provide a feature you request. Each provider has its own terms and privacy notice.",
         "Eclipze does not sell or rent your personal data. AI provider keys are encrypted before storage. You are responsible for choosing appropriate providers and sending only content you are authorized to share with them.",
         "When you message the ERD agent, your chat messages, the current diagram, and schema information from a connected database are sent to the agent's AI provider to process each message.",
         "When an AI feature runs with an API key you connect, the request is made with your key, and the provider bills you directly under its own terms and prices. Eclipze does not charge AI credits for those requests.",
+        "If you connect an Ollama server, you are responsible for running and securing it, including any proxy or API key in front of it. Eclipze only sends requests to the server URL you enter and does not charge AI credits for them.",
         "You can connect a Supabase, Prisma Postgres, MongoDB, Neon, or InsForge account from the ERD editor. By connecting one, you authorize Eclipze to use that credential to list your projects, read their database schemas, and run the changes you or the ERD agent request. Database changes, such as dropped tables or columns, may be permanent. You are responsible for reviewing the list of changes before you confirm them and for keeping your own backups. Only connect accounts you are authorized to manage.",
       ],
     },
@@ -249,7 +250,7 @@ export const LEGAL_TERMS_XVI_OCTOBER_MMXXVI: LegalDocumentVersion = {
 export const LEGAL_PRIVACY_I_NOVEMBER_MMXXVI: LegalDocumentVersion = {
   version: "2026-11-01",
   summary:
-    "Explained that Eclipze-funded AI requests go to OpenRouter, that you can connect your own AI providers instead, and that Eclipze-funded AI is temporarily paused.",
+    "Explained that Eclipze-funded AI requests go to OpenRouter, that you can connect your own AI providers instead, including your own Ollama server, and that Eclipze-funded AI is temporarily paused.",
   title: "Privacy Notice",
   description: "Privacy Notice for Eclipze.",
   intro:
@@ -298,7 +299,7 @@ export const LEGAL_PRIVACY_I_NOVEMBER_MMXXVI: LegalDocumentVersion = {
       paragraphs: [
         "Eclipze does not sell or rent personal data. Information is shared with providers only when needed to operate a feature or deliver a communication you request.",
         "When an AI feature runs on Eclipze-funded models, the information it needs is sent to OpenRouter: for an AI task, its prompt and selected skill content; for the ERD agent, your chat messages, the current diagram, and schema information from a connected database. Eclipze-funded AI is temporarily paused, so AI features currently run only with providers you connect.",
-        "You can also connect your own AI providers, such as Anthropic, OpenAI, OpenRouter, Z.Ai, xAI, or Cursor. When a feature runs with a provider you connect, the same information is sent to that provider with your API key and is handled under its own terms and privacy notice.",
+        "You can also connect your own AI providers, such as Anthropic, OpenAI, OpenRouter, Z.Ai, xAI, or Cursor, or an Ollama server you run yourself. When a feature runs with a provider you connect, the same information is sent to that provider with your API key and is handled under its own terms and privacy notice. When it runs with your Ollama server, the information is sent to the server URL you entered, and Eclipze stores that URL and the model name with your account.",
         "Database credentials are sent only to the provider they belong to (Supabase, Prisma, MongoDB, Neon, or InsForge) to verify them and perform the operations you request. Resend delivers account and security emails. Stripe processes subscription payments and billing. Vercel provides analytics. The application may contact AI provider APIs to validate or use an AI connection. Hosting and database providers also process information needed to operate the application; their identities, locations, and retention periods still need to be confirmed.",
         "Some providers may process information outside Mexico. The operator must confirm destinations and transfer conditions before publishing this notice. Each provider may handle received data under its own terms and privacy notices.",
       ],

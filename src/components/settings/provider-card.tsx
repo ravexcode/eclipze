@@ -8,6 +8,7 @@ import {
 
 import Button from "@/components/ui/button";
 import ProviderIcon from "@/components/ui/provider-icon";
+import { OLLAMA_DEFAULT_BASE_URL } from "@/constants/ollama";
 import type {
   AiProvider,
   AiProviderConfig,
@@ -21,20 +22,27 @@ export default function ProviderCard(props: {
   connection?: AiProviderConnection;
   apiKey: string;
   model: string;
+  baseUrl: string;
   isBusy: boolean;
   onApiKeyChange(provider: AiProvider, value: string): void;
   onModelChange(provider: AiProvider, value: string): void;
+  onBaseUrlChange(provider: AiProvider, value: string): void;
   onConnect(provider: AiProviderConfig): void;
   onDisconnect(provider: AiProviderConfig): void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const isConnected = Boolean(props.connection?.connected);
   const isApiKeyProvider = props.provider.kind === "api-key";
-  const canConnect = !isApiKeyProvider || Boolean(props.apiKey.trim());
+  const isServerUrlProvider = props.provider.kind === "server-url";
+  const canConnect = isServerUrlProvider
+    ? Boolean(props.baseUrl.trim() && props.model.trim())
+    : !isApiKeyProvider || Boolean(props.apiKey.trim());
   const panelId = `${props.provider.id.toLowerCase()}-provider-settings`;
-  const connectionDetail = isConnected && props.connection?.keyHint
-    ? `Key ending in ${props.connection.keyHint}`
-    : props.provider.description;
+  const connectionDetail = isConnected && props.connection?.baseUrl
+    ? `${props.connection.baseUrl} · ${props.connection.model ?? "No model"}`
+    : isConnected && props.connection?.keyHint
+      ? `Key ending in ${props.connection.keyHint}`
+      : props.provider.description;
 
   return (
     <article className="flex flex-col gap-1">
@@ -112,14 +120,60 @@ export default function ProviderCard(props: {
               </span>
             </label>
           ) : null}
+          {isServerUrlProvider ? (
+            <>
+              <label
+                className="flex flex-col gap-1.5 text-xs"
+                htmlFor={`${props.provider.id}-base-url`}>
+                Server URL
+                <SettingsInput
+                  id={`${props.provider.id}-base-url`}
+                  type="url"
+                  value={props.baseUrl}
+                  onChange={(event) => props.onBaseUrlChange(props.provider.id, event.target.value)}
+                  placeholder={OLLAMA_DEFAULT_BASE_URL}
+                  autoComplete="off"
+                  disabled={props.isBusy}
+                  spellCheck={false} />
+                <span className="text-xs text-foreground-off">
+                  Eclipze&apos;s server calls this URL. Localhost works only when Eclipze runs on the same machine; a deployed site needs a public HTTPS URL.
+                </span>
+              </label>
+              <label
+                className="flex flex-col gap-1.5 text-xs"
+                htmlFor={`${props.provider.id}-api-key`}>
+                API key <span className="text-foreground-off">(optional)</span>
+                <SettingsInput
+                  id={`${props.provider.id}-api-key`}
+                  type="password"
+                  value={props.apiKey}
+                  onChange={(event) => props.onApiKeyChange(props.provider.id, event.target.value)}
+                  placeholder={props.connection?.keyHint ? "Enter new key to replace saved key" : "Only for servers behind an authenticating proxy"}
+                  autoComplete="off"
+                  disabled={props.isBusy}
+                  spellCheck={false} />
+                <span className="text-xs text-foreground-off">
+                  {props.connection?.keyHint
+                    ? `Saved key ends in ${props.connection.keyHint}. It is kept while the server URL stays the same.`
+                    : "Ollama has no API keys of its own. Key is encrypted before storage."}
+                </span>
+              </label>
+            </>
+          ) : null}
           <label className="flex flex-col gap-1.5 text-xs" htmlFor={`${props.provider.id}-model`}>
-            Model override <span className="text-foreground-off">(optional)</span>
+            {isServerUrlProvider ? (
+              "Model"
+            ) : (
+              <span>
+                Model override <span className="text-foreground-off">(optional)</span>
+              </span>
+            )}
             <SettingsInput
               id={`${props.provider.id}-model`}
               type="text"
               value={props.model}
               onChange={(event) => props.onModelChange(props.provider.id, event.target.value)}
-              placeholder="Use the default model"
+              placeholder={isServerUrlProvider ? "An installed model, such as llama3.1" : "Use the default model"}
               autoComplete="off"
               disabled={props.isBusy} />
           </label>
@@ -135,9 +189,15 @@ export default function ProviderCard(props: {
                 Disconnect
               </Button>
             ) : null}
-            {!isConnected || isApiKeyProvider ? (
+            {!isConnected || isApiKeyProvider || isServerUrlProvider ? (
               <Button type="submit" variant="secondary" disabled={props.isBusy || !canConnect}>
-                {props.isBusy ? "Saving..." : isConnected ? "Replace key" : "Connect"}
+                {props.isBusy
+                  ? "Saving..."
+                  : !isConnected
+                    ? "Connect"
+                    : isServerUrlProvider
+                      ? "Save"
+                      : "Replace key"}
               </Button>
             ) : null}
           </div>

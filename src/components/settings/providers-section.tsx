@@ -8,6 +8,7 @@ import {
   type AiProviderConfig,
   type AiProviderConnection,
 } from "@/types/ai";
+import { OLLAMA_DEFAULT_BASE_URL } from "@/constants/ollama";
 import { apiFetch } from "@/utils/api-fetch";
 import McpSection from "./mcp-section";
 import ProviderCard from "./provider-card";
@@ -35,11 +36,21 @@ const initialModels = AI_PROVIDERS.reduce(
   {} as Record<AiProvider, string>,
 );
 
+// Self-hosted providers start with their usual local address.
+const initialBaseUrls = AI_PROVIDERS.reduce(
+  (baseUrls, provider) => {
+    baseUrls[provider.id] = provider.kind === "server-url" ? OLLAMA_DEFAULT_BASE_URL : "";
+    return baseUrls;
+  },
+  {} as Record<AiProvider, string>,
+);
+
 export default function ProvidersSection() {
   const [connections, setConnections] = useState<AiProviderConnection[]>([]);
   const [apiKeys, setApiKeys] =
     useState<Record<AiProvider, string>>(initialApiKeys);
   const [models, setModels] = useState<Record<AiProvider, string>>(initialModels);
+  const [baseUrls, setBaseUrls] = useState<Record<AiProvider, string>>(initialBaseUrls);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +76,13 @@ export default function ProvidersSection() {
             ...current,
             ...(data.connections ?? []).reduce((values, connection) => {
               values[connection.provider] = connection.model ?? "";
+              return values;
+            }, {} as Record<AiProvider, string>),
+          }));
+          setBaseUrls((current) => ({
+            ...current,
+            ...(data.connections ?? []).reduce((values, connection) => {
+              if (connection.baseUrl) values[connection.provider] = connection.baseUrl;
               return values;
             }, {} as Record<AiProvider, string>),
           }));
@@ -94,11 +112,15 @@ export default function ProvidersSection() {
     setMessage(null);
     setBusyProvider(provider.id);
     try {
-      const body: { provider: AiProvider; apiKey?: string; model?: string } = {
+      const body: { provider: AiProvider; apiKey?: string; model?: string; baseUrl?: string } = {
         provider: provider.id,
         model: models[provider.id],
       };
       if (provider.kind === "api-key") body.apiKey = apiKeys[provider.id];
+      if (provider.kind === "server-url") {
+        body.baseUrl = baseUrls[provider.id];
+        body.apiKey = apiKeys[provider.id];
+      }
       const response = await apiFetch("/api/ai-providers", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -117,6 +139,7 @@ export default function ProvidersSection() {
         ]);
       setApiKeys((current) => ({ ...current, [provider.id]: "" }));
       setModels((current) => ({ ...current, [provider.id]: data.connection?.model ?? current[provider.id] }));
+      setBaseUrls((current) => ({ ...current, [provider.id]: data.connection?.baseUrl ?? current[provider.id] }));
       setMessage(data.message);
     } catch {
       setError(`Unable to connect ${provider.label}.`);
@@ -154,7 +177,11 @@ export default function ProvidersSection() {
   };
 
   const connectionProviders = AI_PROVIDERS.filter(
-    (provider) => provider.id === "GPT" || provider.id === "CLAUDE" || provider.id === "CURSOR" || provider.id === "XAI",
+    (provider) => provider.id === "GPT" ||
+      provider.id === "CLAUDE" ||
+      provider.id === "CURSOR" ||
+      provider.id === "XAI" ||
+      provider.id === "OLLAMA",
   );
   const apiKeyProviders = AI_PROVIDERS.filter(
     (provider) => provider.id === "OPENROUTER" || provider.id === "ZAI",
@@ -186,12 +213,16 @@ export default function ProvidersSection() {
             connection={connectionMap.get(provider.id)}
             apiKey={apiKeys[provider.id]}
             model={models[provider.id]}
+            baseUrl={baseUrls[provider.id]}
             isBusy={busyProvider === provider.id}
             onApiKeyChange={(id, value) =>
               setApiKeys((current) => ({ ...current, [id]: value }))
             }
             onModelChange={(id, value) =>
               setModels((current) => ({ ...current, [id]: value }))
+            }
+            onBaseUrlChange={(id, value) =>
+              setBaseUrls((current) => ({ ...current, [id]: value }))
             }
             onConnect={onConnect}
             onDisconnect={onDisconnect} />

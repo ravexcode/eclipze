@@ -128,3 +128,10 @@ export type AgentRun = {
   updatedAt: string;
   events?: AgentRunEvent[];
 };
+
+// A read-only, in-memory copy of a repository branch. `paths` lists every text file, and
+// `files` holds the contents of the ones small enough to read.
+export type RepositorySnapshot = {
+  paths: string[];
+  files: Map<string, string>;
+};

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { appendRunEvent, serializeAgentRun, startAgentRun } from "@/lib/agent-runs";
@@ -15,7 +15,7 @@ import { hasUnlimitedAiCredits } from "@/utils/plans";
 import { formatTimeUntil } from "@/utils/usage-limits";
 import { resolveAllowedCommand, createInstructionsDigest } from "@/lib/agent-runner";
 import { getOpenRouterCredential, getOpenRouterModels } from "@/lib/openrouter";
-import { getProviderApiKey } from "@/lib/ai-provider-credentials";
+import { getProviderCredential } from "@/lib/ai-provider-credentials";
 import { PROVIDER_LABELS } from "@/constants/agent-providers";
 import type { AgentProvider } from "@/types/ai";
 import prisma from "@/lib/prisma";
@@ -28,6 +28,9 @@ const PRIVATE_NO_STORE_HEADERS = {
 };
 
 const PERMISSION_MODES = new Set<string>(AGENT_PERMISSION_MODES);
+
+// Runs continue after the response with after(), which lasts up to this route's limit.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -121,7 +124,7 @@ export async function POST(request: Request) {
         ? await prisma.mcpConnection.findFirst({ where: { id: mcpConnectionId, userId: user.id }, select: { id: true } })
         : null;
       if (!connection) return badRequest("Reconnect this agent's MCP server in Settings before tagging it.");
-    } else if (!await getProviderApiKey(user.id, provider)) {
+    } else if (!await getProviderCredential(user.id, provider)) {
       return badRequest(`Connect a ${PROVIDER_LABELS[provider]} provider in Settings before tagging this agent.`);
     }
   } catch (error) {
@@ -257,7 +260,7 @@ export async function POST(request: Request) {
   }
 
   await appendRunEvent(run.id, { type: "SYSTEM", message: "Run queued." });
-  startAgentRun(run.id, user.id);
+  after(() => startAgentRun(run.id, user.id));
 
   const createdRun = await prisma.agentRun.findUnique({
     where: { id: run.id },

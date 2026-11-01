@@ -7,4 +7,5 @@ export const PROVIDER_ICON_PATHS: Record<AiProvider, string> = {
   ZAI: "/providers/zai.svg",
   XAI: "/providers/xai.svg",
   CURSOR: "/providers/cursor.svg",
+  OLLAMA: "/providers/ollama.svg",
 };

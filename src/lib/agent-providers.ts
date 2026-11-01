@@ -14,6 +14,8 @@ import {
   PROVIDER_LABELS,
 } from "@/constants/agent-providers";
 import { DEFAULT_AGENT_REASONING_EFFORT } from "@/constants/agents";
+import { OLLAMA_CHAT_TIMEOUT_MS, OLLAMA_MAX_OUTPUT_TOKENS } from "@/constants/ollama";
+import { fetchOllama } from "@/lib/ollama";
 import type { AiProvider } from "@/types/ai";
 
 export type ChatMessage = Record<string, unknown>;
@@ -34,6 +36,8 @@ export type ChatCompletionResult = {
 type ChatCompletionInput = {
   provider: AiProvider;
   apiKey: string;
+  // Server URL for self-hosted providers such as Ollama.
+  baseUrl?: string | null;
   model: string;
   userId: string;
   messages: ChatMessage[];
@@ -49,6 +53,9 @@ function describeProviderFailure(provider: AiProvider, status: number) {
 
   if (status === 401 || status === 403) return `${label} rejected the saved API key. Reconnect it in Settings.`;
   if (status === 429) return `${label} rate limit reached. Try again shortly.`;
+  if (provider === "OLLAMA" && (status === 400 || status === 404)) {
+    return "Ollama could not run this model. Check that it is installed and supports tool calling, or use Plan mode.";
+  }
   return `${label} could not complete this task.`;
 }
 
@@ -79,6 +86,26 @@ async function postJson(input: {
   return response.json() as Promise<Record<string, unknown>>;
 }
 
+type OpenAiCompatiblePayload = {
+  choices?: Array<{
+    message?: { content?: unknown; tool_calls?: ChatToolCall[] };
+  }>;
+  usage?: { cost?: unknown; prompt_tokens?: unknown; completion_tokens?: unknown };
+};
+
+function readOpenAiCompatibleResult(payload: OpenAiCompatiblePayload): ChatCompletionResult {
+  const message = payload.choices?.[0]?.message;
+  const cost = readFiniteNumber(payload.usage?.cost);
+
+  return {
+    content: message?.content ?? null,
+    toolCalls: Array.isArray(message?.tool_calls) ? message.tool_calls : [],
+    costUsd: cost !== null && cost >= 0 ? cost : null,
+    inputTokens: readFiniteNumber(payload.usage?.prompt_tokens),
+    outputTokens: readFiniteNumber(payload.usage?.completion_tokens),
+  };
+}
+
 async function requestOpenAiCompatible(input: ChatCompletionInput): Promise<ChatCompletionResult> {
   const isOpenRouter = input.provider === "OPENROUTER";
   const payload = await postJson({
@@ -98,23 +125,46 @@ async function requestOpenAiCompatible(input: ChatCompletionInput): Promise<Chat
           }
         : { max_completion_tokens: OPENAI_MAX_OUTPUT_TOKENS }),
     },
-  }) as {
-    choices?: Array<{
-      message?: { content?: unknown; tool_calls?: ChatToolCall[] };
-    }>;
-    usage?: { cost?: unknown; prompt_tokens?: unknown; completion_tokens?: unknown };
-  };
+  }) as OpenAiCompatiblePayload;
 
-  const message = payload.choices?.[0]?.message;
-  const cost = readFiniteNumber(payload.usage?.cost);
+  return readOpenAiCompatibleResult(payload);
+}
 
-  return {
-    content: message?.content ?? null,
-    toolCalls: Array.isArray(message?.tool_calls) ? message.tool_calls : [],
-    costUsd: cost !== null && cost >= 0 ? cost : null,
-    inputTokens: readFiniteNumber(payload.usage?.prompt_tokens),
-    outputTokens: readFiniteNumber(payload.usage?.completion_tokens),
-  };
+// Ollama serves an OpenAI-compatible API. Requests go through fetchOllama, which applies
+// the network rules for user-provided server URLs.
+async function requestOllama(input: ChatCompletionInput): Promise<ChatCompletionResult> {
+  if (!input.baseUrl) {
+    throw new Error("Reconnect your Ollama server in Settings.");
+  }
+
+  const response = await fetchOllama({
+    baseUrl: input.baseUrl,
+    path: "/v1/chat/completions",
+    apiKey: input.apiKey,
+    timeoutMs: OLLAMA_CHAT_TIMEOUT_MS,
+    init: {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: input.model,
+        messages: input.messages,
+        max_tokens: OLLAMA_MAX_OUTPUT_TOKENS,
+        ...(input.tools ? { tools: input.tools, tool_choice: "auto" } : {}),
+      }),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(describeProviderFailure(input.provider, response.status));
+  }
+
+  const payload = await response.json().catch(() => null) as OpenAiCompatiblePayload | null;
+
+  if (!payload) {
+    throw new Error("Ollama returned a response that could not be read.");
+  }
+
+  return readOpenAiCompatibleResult(payload);
 }
 
 function toAnthropicMessages(messages: ChatMessage[]) {
@@ -224,6 +274,7 @@ async function requestAnthropic(input: ChatCompletionInput): Promise<ChatComplet
 export async function requestChatCompletion(input: ChatCompletionInput) {
   if (input.provider === "CLAUDE") return requestAnthropic(input);
   if (input.provider === "OPENROUTER" || input.provider === "GPT") return requestOpenAiCompatible(input);
+  if (input.provider === "OLLAMA") return requestOllama(input);
 
   throw new Error(`${PROVIDER_LABELS[input.provider]} is not available for agent tasks.`);
 }
