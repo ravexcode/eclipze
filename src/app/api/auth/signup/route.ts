@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth";
 import { sendAuthCodeEmail } from "@/lib/auth-email";
 import { enforceRateLimits } from "@/lib/rate-limit";
+import { notifySecurityEvent } from "@/lib/security-email";
 
 async function sendVerificationCode(userId: string, email: string) {
   const verification = await createVerificationCode({
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
     // Answer exactly like a new sign-up, so this endpoint does not reveal which emails
     // have accounts. An unverified owner gets a fresh code to finish verification.
     if (existingByEmail.emailVerifiedAt) {
+      notifySecurityEvent(request, { to: email, kind: "SIGNUP_ATTEMPT" });
       return createVerificationStepResponse(email, true);
     }
 

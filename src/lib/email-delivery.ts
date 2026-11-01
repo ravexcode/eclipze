@@ -16,3 +16,47 @@ export function sendEmailAfterResponse(label: string, send: () => Promise<void>)
     }
   });
 }
+
+function getResendConfig() {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.AUTH_EMAIL_NO_REPLY_FROM ?? process.env.AUTH_EMAIL_FROM;
+
+  if (!apiKey || !from) {
+    throw new Error("Email delivery is not configured. Add RESEND_API_KEY and AUTH_EMAIL_NO_REPLY_FROM to your environment.");
+  }
+
+  return {
+    apiKey,
+    from,
+    replyTo: process.env.AUTH_EMAIL_REPLY_TO,
+  };
+}
+
+export async function sendTransactionalEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}) {
+  const config = getResendConfig();
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: [input.to],
+      reply_to: config.replyTo,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Resend request failed with ${response.status}`);
+  }
+}

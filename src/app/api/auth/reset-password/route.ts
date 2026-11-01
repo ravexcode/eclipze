@@ -10,6 +10,7 @@ import {
   resetPasswordWithCode,
 } from "@/lib/auth";
 import { enforceRateLimits } from "@/lib/rate-limit";
+import { notifySecurityEvent } from "@/lib/security-email";
 
 export async function POST(request: Request) {
   const rateLimitResponse = await enforceRateLimits([
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
   const passwordHash = await hashPassword(password);
   const reset = await resetPasswordWithCode({ email, code, passwordHash });
   if (!reset) return NextResponse.json({ message: "Invalid or expired password reset code." }, { status: 400 });
+
+  notifySecurityEvent(request, { to: email, kind: "PASSWORD_RESET" });
 
   return NextResponse.json({ message: "Password reset successfully.", redirectTo: "/auth/signin" });
 }
