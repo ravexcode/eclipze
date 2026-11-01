@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   createHash,
+  createHmac,
   randomBytes,
   randomInt,
   scrypt,
@@ -15,6 +16,7 @@ import { cache } from "react";
 
 import type { Prisma } from "@prisma/client";
 
+import { AUTH_CODE_SECRET_ENV } from "@/constants/auth";
 import { VERIFICATION_CODE_MAX_ATTEMPTS } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import type { UserPlan, UserRole } from "@/types/user";
@@ -87,8 +89,22 @@ export function generateVerificationCode(length = 6) {
   return code;
 }
 
+function getAuthCodeSecret() {
+  const secret = process.env[AUTH_CODE_SECRET_ENV];
+
+  if (!secret) {
+    throw new Error(`${AUTH_CODE_SECRET_ENV} is not configured.`);
+  }
+
+  return secret;
+}
+
+// Keyed with a server secret: a 6-digit code has only 10^6 values, so a plain hash
+// leaked from the database could be reversed instantly.
 function createCodeHash(userId: string, purpose: AuthCodePurpose, code: string) {
-  return hashSecret(`${userId}:${purpose}:${code}`);
+  return createHmac("sha256", getAuthCodeSecret())
+    .update(`${userId}:${purpose}:${code}`)
+    .digest("hex");
 }
 
 function createSessionToken() {

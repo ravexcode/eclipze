@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createHash } = require("node:crypto");
+const { createHmac } = require("node:crypto");
 const test = require("node:test");
 
 const { loadTypeScript } = require("./helpers/load-typescript.cjs");
@@ -194,12 +194,14 @@ function loadAuth(prisma) {
       "next/navigation": { redirect() {} },
       react: { cache: callback => callback },
     },
-    globals: { Buffer },
+    globals: { Buffer, process: { env: { AUTH_CODE_SECRET: TEST_CODE_SECRET } } },
   });
 }
 
+const TEST_CODE_SECRET = "test-code-secret";
+
 function hashCode(userId, code) {
-  return createHash("sha256").update(`${userId}:EMAIL_VERIFICATION:${code}`).digest("hex");
+  return createHmac("sha256", TEST_CODE_SECRET).update(`${userId}:EMAIL_VERIFICATION:${code}`).digest("hex");
 }
 
 test("verification code is consumed once when the code matches", async () => {
