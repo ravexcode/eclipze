@@ -18,7 +18,8 @@
     "developer:promote": "node --env-file=.env scripts/promote-developer.cjs",
     "developer:demote": "node --env-file=.env scripts/promote-developer.cjs --demote",
     "stripe:setup": "node --env-file=.env scripts/setup-stripe.mjs",
-    "stripe:webhook": "node --env-file=.env scripts/stripe-webhook.mjs"
+    "stripe:webhook": "node --env-file=.env scripts/stripe-webhook.mjs",
+    "security:encrypt-data": "node --env-file=.env scripts/encrypt-existing-data.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

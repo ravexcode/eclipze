@@ -9,6 +9,7 @@ import type {
   WorkspaceSnapshot,
 } from "@/types/user";
 import { serializeUser } from "@/lib/auth";
+import { decryptContent } from "@/lib/content-encryption";
 import prisma from "@/lib/prisma";
 import { serializeMailUser } from "@/utils/mail";
 
@@ -187,7 +188,7 @@ export async function getWorkspaceSnapshot(user: WorkspaceUser): Promise<Workspa
     agentSessions: agentSessions.map(serializeAgentSession),
     mails: mails.map(mail => ({
       id: mail.id,
-      subject: mail.subject,
+      subject: decryptContent(mail.subject, "mail.subject"),
       createdAt: mail.sentAt.toISOString(),
       readAt: iso(mail.readAt),
       sender: serializeMailUser(mail.sender),

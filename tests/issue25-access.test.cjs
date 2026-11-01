@@ -3,6 +3,12 @@ const test = require("node:test");
 
 const { loadTypeScript } = require("./helpers/load-typescript.cjs");
 
+// Content encryption reads its key from the environment.
+const ENCRYPTION_GLOBALS = {
+  Buffer,
+  process: { env: { AI_CREDENTIALS_ENCRYPTION_KEY: "test-encryption-secret" } },
+};
+
 function matchesWhere(record, where) {
   if (!record) return false;
   if (!where) return true;
@@ -133,8 +139,8 @@ function makeHarness({ user, issues = [] }) {
   };
 
   const listRoute = loadTypeScript("src/app/api/issues/route.ts", { mocks: routeMocks });
-  const detailRoute = loadTypeScript("src/app/api/issues/[id]/route.ts", { mocks: routeMocks });
-  const messageRoute = loadTypeScript("src/app/api/issues/[id]/messages/route.ts", { mocks: routeMocks });
+  const detailRoute = loadTypeScript("src/app/api/issues/[id]/route.ts", { mocks: routeMocks, globals: ENCRYPTION_GLOBALS });
+  const messageRoute = loadTypeScript("src/app/api/issues/[id]/messages/route.ts", { mocks: routeMocks, globals: ENCRYPTION_GLOBALS });
   const usersRoute = loadTypeScript("src/app/api/developer/users/route.ts", { mocks: routeMocks });
   const userRoleRoute = loadTypeScript("src/app/api/developer/users/[id]/role/route.ts", { mocks: routeMocks });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import { getCurrentUser, normalizeEmail } from "@/lib/auth";
+import { decryptContent, encryptContent } from "@/lib/content-encryption";
 import { checkMonthlyMailLimit } from "@/lib/plan-limits";
 import { enforceRateLimits } from "@/lib/rate-limit";
 import { badRequest, parseBody, requiredString } from "@/lib/workspace-api";
@@ -28,8 +29,8 @@ function serializeMail(mail: MailWithUsers) {
     id: mail.id,
     senderId: mail.senderId,
     recipientId: mail.recipientId,
-    subject: mail.subject,
-    body: mail.body,
+    subject: decryptContent(mail.subject, "mail.subject"),
+    body: decryptContent(mail.body, "mail.body"),
     readAt: mail.readAt?.toISOString() ?? null,
     sentAt: mail.sentAt.toISOString(),
     sender: serializeMailUser(mail.sender),
@@ -138,8 +139,8 @@ export async function POST(request: Request) {
     data: {
       senderId: user.id,
       recipientId: recipient.id,
-      subject: subject.value,
-      body: mailBody.value,
+      subject: encryptContent(subject.value, "mail.subject"),
+      body: encryptContent(mailBody.value, "mail.body"),
     },
     include: {
       sender: { select: USER_SUMMARY },
