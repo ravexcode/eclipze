@@ -1,15 +1,26 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import {
   consumeVerificationCode,
   createSession,
+  getRequestIp,
   isValidEmail,
   normalizeEmail,
 } from "@/lib/auth";
 import { recordCurrentLegalAcceptance } from "@/lib/legal-acceptance";
+import { enforceRateLimits } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.verifyCodeByIp, subject: getRequestIp(request) },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const body = await request.json().catch(() => null) as {
     email?: string;
     code?: string;

@@ -13,6 +13,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import type { Prisma } from "@prisma/client";
+
+import { VERIFICATION_CODE_MAX_ATTEMPTS } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import type { UserPlan, UserRole } from "@/types/user";
 
@@ -145,6 +148,95 @@ export async function createVerificationCode(input: {
   };
 }
 
+type VerificationCodeClient = Pick<Prisma.TransactionClient, "verificationCode">;
+
+function isMatchingHash(storedHash: string, candidateHash: string) {
+  const storedBuffer = Buffer.from(storedHash, "hex");
+  const candidateBuffer = Buffer.from(candidateHash, "hex");
+
+  if (storedBuffer.length !== candidateBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(storedBuffer, candidateBuffer);
+}
+
+/**
+ * Checks a code against the user's latest active code and consumes it on a match.
+ * Each check uses one attempt, so a code stops working after
+ * VERIFICATION_CODE_MAX_ATTEMPTS guesses even if it has not expired.
+ */
+async function claimVerificationCode(client: VerificationCodeClient, input: {
+  userId: string;
+  purpose: AuthCodePurpose;
+  code: string;
+}) {
+  const now = new Date();
+
+  const activeCode = await client.verificationCode.findFirst({
+    where: {
+      userId: input.userId,
+      purpose: input.purpose,
+      consumedAt: null,
+      expiresAt: {
+        gt: now,
+      },
+      attempts: {
+        lt: VERIFICATION_CODE_MAX_ATTEMPTS,
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      id: true,
+      codeHash: true,
+    },
+  });
+
+  if (!activeCode) {
+    return false;
+  }
+
+  // Reserve the attempt before comparing, so parallel guesses cannot exceed the limit.
+  const reservedAttempt = await client.verificationCode.updateMany({
+    where: {
+      id: activeCode.id,
+      consumedAt: null,
+      attempts: {
+        lt: VERIFICATION_CODE_MAX_ATTEMPTS,
+      },
+    },
+    data: {
+      attempts: {
+        increment: 1,
+      },
+    },
+  });
+
+  if (reservedAttempt.count === 0) {
+    return false;
+  }
+
+  const candidateHash = createCodeHash(input.userId, input.purpose, input.code);
+
+  if (!isMatchingHash(activeCode.codeHash, candidateHash)) {
+    return false;
+  }
+
+  const consumedCode = await client.verificationCode.updateMany({
+    where: {
+      id: activeCode.id,
+      consumedAt: null,
+    },
+    data: {
+      consumedAt: now,
+    },
+  });
+
+  return consumedCode.count === 1;
+}
+
 export async function consumeVerificationCode(input: {
   email: string;
   purpose: AuthCodePurpose;
@@ -160,33 +252,15 @@ export async function consumeVerificationCode(input: {
     return null;
   }
 
-  const verificationCode = await prisma.verificationCode.findFirst({
-    where: {
-      userId: user.id,
-      purpose: input.purpose,
-      consumedAt: null,
-      expiresAt: {
-        gt: new Date(),
-      },
-      codeHash: createCodeHash(user.id, input.purpose, input.code),
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+  const isClaimed = await claimVerificationCode(prisma, {
+    userId: user.id,
+    purpose: input.purpose,
+    code: input.code,
   });
 
-  if (!verificationCode) {
+  if (!isClaimed) {
     return null;
   }
-
-  await prisma.verificationCode.update({
-    where: {
-      id: verificationCode.id,
-    },
-    data: {
-      consumedAt: new Date(),
-    },
-  });
 
   return user;
 }
@@ -195,15 +269,31 @@ export async function resetPasswordWithCode(input: { email: string; code: string
   const email = normalizeEmail(input.email);
   return prisma.$transaction(async (transaction) => {
     const user = await transaction.user.findUnique({ where: { email } });
-    if (!user?.emailVerifiedAt) return false;
-    const verificationCode = await transaction.verificationCode.findFirst({
-      where: { userId: user.id, purpose: "PASSWORD_RESET", consumedAt: null, expiresAt: { gt: new Date() }, codeHash: createCodeHash(user.id, "PASSWORD_RESET", input.code) },
-      orderBy: { createdAt: "desc" },
+
+    if (!user?.emailVerifiedAt) {
+      return false;
+    }
+
+    // A wrong code returns false without throwing, so the used attempt is still committed.
+    const isClaimed = await claimVerificationCode(transaction, {
+      userId: user.id,
+      purpose: "PASSWORD_RESET",
+      code: input.code,
     });
-    if (!verificationCode) return false;
-    await transaction.verificationCode.update({ where: { id: verificationCode.id }, data: { consumedAt: new Date() } });
-    await transaction.user.update({ where: { id: user.id }, data: { passwordHash: input.passwordHash } });
-    await transaction.authSession.deleteMany({ where: { userId: user.id } });
+
+    if (!isClaimed) {
+      return false;
+    }
+
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { passwordHash: input.passwordHash },
+    });
+
+    await transaction.authSession.deleteMany({
+      where: { userId: user.id },
+    });
+
     return true;
   });
 }
