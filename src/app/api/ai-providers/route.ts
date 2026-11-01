@@ -9,6 +9,7 @@ import { activateProviderAgent, deactivateProviderAgent, isExternalAgentProvider
 import { validateProviderApiKey } from "@/lib/ai-provider-validation";
 import { validateOllamaConnection } from "@/lib/ollama";
 import { normalizeOllamaBaseUrl } from "@/utils/ollama";
+import { getAiProviderCredentialContext } from "@/utils/ai-credentials";
 
 const PRIVATE_NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -150,7 +151,7 @@ async function connectOllama(userId: string, body: Record<string, unknown>, mode
 
   if (keepsSavedKey && existingConnection?.encryptedApiKey) {
     try {
-      apiKey = decryptApiKey(existingConnection.encryptedApiKey);
+      apiKey = decryptApiKey(existingConnection.encryptedApiKey, getAiProviderCredentialContext(userId, "OLLAMA"));
     } catch {
       return NextResponse.json(
         { message: "Unable to read the saved Ollama API key. Enter it again." },
@@ -173,7 +174,7 @@ async function connectOllama(userId: string, body: Record<string, unknown>, mode
     keyHint = existingConnection?.keyHint ?? null;
   } else if (newApiKey) {
     try {
-      encryptedApiKey = encryptApiKey(newApiKey);
+      encryptedApiKey = encryptApiKey(newApiKey, getAiProviderCredentialContext(userId, "OLLAMA"));
     } catch (error) {
       if (error instanceof Error && error.message === "AI_CREDENTIALS_ENCRYPTION_KEY is not configured.") {
         return encryptionUnavailableResponse();
@@ -353,7 +354,7 @@ export async function PUT(request: Request) {
     }
 
     try {
-      encryptedApiKey = encryptApiKey(apiKey);
+      encryptedApiKey = encryptApiKey(apiKey, getAiProviderCredentialContext(user.id, provider));
     } catch (error) {
       if (error instanceof Error && error.message === "AI_CREDENTIALS_ENCRYPTION_KEY is not configured.") {
         return NextResponse.json({ message: "AI provider storage is not configured. Add AI_CREDENTIALS_ENCRYPTION_KEY." }, { status: 503 });

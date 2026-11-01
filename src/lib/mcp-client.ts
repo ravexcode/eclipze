@@ -5,6 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 import { decryptApiKey } from "@/lib/ai-credentials";
 import { assertPublicHttpsUrl } from "@/lib/mcp-url";
+import { getMcpConnectionCredentialContext } from "@/utils/ai-credentials";
 import {
   MCP_CALL_TIMEOUT_MS,
   MCP_CANCEL_POLL_INTERVAL_MS,
@@ -13,6 +14,7 @@ import {
 } from "@/constants/mcp";
 
 type McpConnectionTarget = {
+  userId: string;
   url: string;
   encryptedToken: string | null;
 };
@@ -27,7 +29,9 @@ async function withMcpClient<T>(
   run: (client: Client) => Promise<T>,
 ) {
   const url = await assertPublicHttpsUrl(connection.url);
-  const token = connection.encryptedToken ? decryptApiKey(connection.encryptedToken) : null;
+  const token = connection.encryptedToken
+    ? decryptApiKey(connection.encryptedToken, getMcpConnectionCredentialContext(connection.userId))
+    : null;
   const transport = new StreamableHTTPClientTransport(url, {
     requestInit: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
     fetch: fetchPublicUrl,

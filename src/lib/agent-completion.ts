@@ -255,7 +255,7 @@ export async function generateAgentResponse(input: {
     const connection = input.mcpConnectionId
       ? await prisma.mcpConnection.findFirst({
           where: { id: input.mcpConnectionId, userId: input.userId },
-          select: { url: true, encryptedToken: true, toolName: true },
+          select: { userId: true, url: true, encryptedToken: true, toolName: true },
         })
       : null;
     if (!connection) throw new Error("This agent's MCP connection was removed. Reconnect it in Settings.");
