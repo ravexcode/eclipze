@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+// Components
+import UsageSkeleton from "../skeletons/dashboard/usage-skeleton";
+
 import { AGENT_CREDITS_UPDATED_EVENT } from "@/constants/agent-events";
 import { USAGE_BAR_DEFAULT_CLASS } from "@/constants/usage-limits";
 import type { AiCreditUsage, AiCreditUsageWindow } from "@/types/ai";
@@ -62,11 +65,7 @@ export default function UsageLimits() {
           {error}
         </p>
       ) : !usage ? (
-        <p
-          role="status"
-          className="text-xs text-foreground-off">
-          Loading usage limits…
-        </p>
+        <UsageSkeleton />
       ) : usage.unlimitedCredits ? (
         <UnlimitedUsageRow />
       ) : (
