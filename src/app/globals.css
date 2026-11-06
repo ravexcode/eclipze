@@ -102,7 +102,6 @@ body {
 
 *:focus {
   outline: none;
-  color: blue;
 }
 
 @theme {

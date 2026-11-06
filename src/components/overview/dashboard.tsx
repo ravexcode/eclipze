@@ -59,58 +59,56 @@ export default function OverviewDashboard({
             </p>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <UsageLimits />
+          <UsageLimits />
 
-            <section
-              aria-labelledby="inbox-title"
-              className="flex flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2
-                  id="inbox-title"
-                  className="text-xs font-medium">
-                  Inbox
-                </h2>
-                <button
-                  type="button"
-                  onClick={onOpenInbox}
-                  className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
-                  Open all
-                  <IconArrowUpRight size={14} strokeWidth={1.8} />
-                </button>
-              </div>
+          <section
+            aria-labelledby="inbox-title"
+            className="flex flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2
+                id="inbox-title"
+                className="text-xs font-medium">
+                Inbox
+              </h2>
+              <button
+                type="button"
+                onClick={onOpenInbox}
+                className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                Open all
+                <IconArrowUpRight size={14} strokeWidth={1.8} />
+              </button>
+            </div>
 
-              {isInitialLoad ? (
-                <InboxSkeleton />
-              ) : mails.length > 0 ? (
-                <div className="flex flex-col">
-                  {mails.slice(0, 5).map(mail => (
-                    <button
-                      key={mail.id}
-                      type="button"
-                      onClick={onOpenInbox}
-                      className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
-                      <span
-                        aria-hidden="true"
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${mail.readAt ? "bg-background-focus" : "bg-foreground"}`}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-foreground-off">
-                        <span className="mr-2 text-foreground">
-                          {mail.sender.username ?? mail.sender.email}
-                        </span>
-                        {mail.subject}
+            {isInitialLoad ? (
+              <InboxSkeleton />
+            ) : mails.length > 0 ? (
+              <div className="flex min-h-45 flex-col">
+                {mails.slice(0, 5).map(mail => (
+                  <button
+                    key={mail.id}
+                    type="button"
+                    onClick={onOpenInbox}
+                    className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${mail.readAt ? "bg-background-focus" : "bg-foreground"}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-foreground-off">
+                      <span className="mr-2 text-foreground">
+                        {mail.sender.username ?? mail.sender.email}
                       </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center justify-center gap-2 py-6 text-xs text-foreground-off">
-                  <IconInbox size={16} strokeWidth={1.7} />
-                  <p>No mail yet.</p>
-                </div>
-              )}
-            </section>
-          </div>
+                      {mail.subject}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-45 flex-1 items-center justify-center gap-2 text-xs text-foreground-off">
+                <IconInbox size={16} strokeWidth={1.7} />
+                <p>No mail yet.</p>
+              </div>
+            )}
+          </section>
 
           <section
             aria-labelledby="issue-activity-title"

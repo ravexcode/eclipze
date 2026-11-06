@@ -58,25 +58,28 @@ export default function UsageLimits() {
         Usage limits
       </h2>
 
-      {error ? (
-        <p
-          role="alert"
-          className="text-xs text-alert-red">
-          {error}
-        </p>
-      ) : !usage ? (
-        <UsageSkeleton />
-      ) : usage.unlimitedCredits ? (
-        <UnlimitedUsageRow />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {usage.usageWindows.map(window => (
-            <UsageWindowRow
-              key={window.key}
-              window={window} />
-          ))}
-        </div>
-      )}
+      {/* Reserved height keeps the rows below in place when the usage data arrives. */}
+      <div className="flex min-h-30 flex-col gap-4">
+        {error ? (
+          <p
+            role="alert"
+            className="text-xs text-alert-red">
+            {error}
+          </p>
+        ) : !usage ? (
+          <UsageSkeleton />
+        ) : usage.unlimitedCredits ? (
+          <UnlimitedUsageRow />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {usage.usageWindows.map(window => (
+              <UsageWindowRow
+                key={window.key}
+                window={window} />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
