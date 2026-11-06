@@ -4,6 +4,7 @@
 interface Props {
   selected: SelectedSection;
   user?: User
+  isLoadingUser: boolean;
   router: AppRouterInstance
 };
 
@@ -27,6 +28,8 @@ import {
 } from "@/constants/components/sidebar-labels";
 
 // Components imports
+import LabelsSkeleton from "./skeletons/sidebar/labels-skeleton";
+import ProfileSkeleton from "./skeletons/sidebar/profile-skeleton";
 import UserProfile from "./ui/profile";
 
 // Types
@@ -128,51 +131,59 @@ export default function Sidebar(props: Props) {
             {/* Input labels */}
             <section
               className="w-full flex flex-col gap-1 text-sm">
-              {
-                filtered_labels.map((label) => {
-                  //TODO: Actualizar la restriccion a algo mas como "Tiene rango?"
-                  const isLocked = label.isPremium === true && !canAccessErd(props.user);
+              {props.isLoadingUser ? (
+                <LabelsSkeleton />
+              ) : (
+                <>
+                  {
+                    filtered_labels.map((label) => {
+                      //TODO: Actualizar la restriccion a algo mas como "Tiene rango?"
+                      const isLocked = label.isPremium === true && !canAccessErd(props.user);
 
-                  if (isLocked) {
-                    return (
-                      <Link
-                        key={label.redirection}
-                        href={props.user?.role === "DEVELOPER" ? "/billing" : "/profile/settings"}
-                        title="Requires the Developer role on a paid plan"
-                        className="w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md text-foreground-off opacity-50 grayscale hover:bg-background-focus/50 hover:opacity-80">
-                        {label.icon}
+                      if (isLocked) {
+                        return (
+                          <Link
+                            key={label.redirection}
+                            href={props.user?.role === "DEVELOPER" ? "/billing" : "/profile/settings"}
+                            title="Requires the Developer role on a paid plan"
+                            className="w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md text-foreground-off opacity-50 grayscale hover:bg-background-focus/50 hover:opacity-80">
+                            {label.icon}
 
-                        {label.label}
+                            {label.label}
 
-                        <IconLock
-                          size={13}
-                          strokeWidth={1.8}
-                          className="ml-auto" />
-                      </Link>
-                    );
+                            <IconLock
+                              size={13}
+                              strokeWidth={1.8}
+                              className="ml-auto" />
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={label.redirection}
+                          href={label.redirection}
+                          className={"w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md " + (label.selected ? "bg-background-focus" : "hover:bg-background-focus/50 text-foreground-off")}>
+                          {label.icon}
+
+                          {label.label}
+                        </Link>
+                      );
+                    })
                   }
-
-                  return (
-                    <Link
-                      key={label.redirection}
-                      href={label.redirection}
-                      className={"w-full flex gap-2 items-center justify-start px-3 py-1.5 rounded-md " + (label.selected ? "bg-background-focus" : "hover:bg-background-focus/50 text-foreground-off")}>
-                      {label.icon}
-
-                      {label.label}
-                    </Link>
-                  );
-                })
-              }
-              {filtered_labels.length === 0 ? (
-                <p className="px-3 py-2 text-foreground-off" role="status">
-                  No navigation options found.
-                </p>
-              ) : null}
+                  {filtered_labels.length === 0 ? (
+                    <p className="px-3 py-2 text-foreground-off" role="status">
+                      No navigation options found.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </section>
 
             {props.user ? (
               <UserProfile profile={props.user} />
+            ) : props.isLoadingUser ? (
+              <ProfileSkeleton />
             ) : null}
           </> :
           <button

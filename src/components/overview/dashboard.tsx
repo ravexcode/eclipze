@@ -1,6 +1,8 @@
 import { IconArrowUpRight, IconInbox } from "@tabler/icons-react";
 
 import UsageLimits from "@/components/overview/usage-limits";
+import InboxSkeleton from "@/components/skeletons/dashboard/inbox-skeleton";
+import IssuesSkeleton from "@/components/skeletons/dashboard/issues-skeleton";
 import { ISSUE_HEAT_LEVELS } from "@/constants/overview";
 import type { WorkspaceIssue, WorkspaceSnapshot } from "@/types/user";
 import { getYearIssueDays } from "@/utils/overview";
@@ -79,11 +81,7 @@ export default function OverviewDashboard({
               </div>
 
               {isInitialLoad ? (
-                <p
-                  role="status"
-                  className="text-xs text-foreground-off">
-                  Loading inbox…
-                </p>
+                <InboxSkeleton />
               ) : mails.length > 0 ? (
                 <div className="flex flex-col">
                   {mails.slice(0, 5).map(mail => (
@@ -123,19 +121,19 @@ export default function OverviewDashboard({
                 className="text-xs font-medium">
                 {now.getFullYear()} issues
               </h2>
-              {!isInitialLoad ? (
+              {isInitialLoad ? (
+                <span
+                  aria-hidden="true"
+                  className="skeleton h-1.5 w-16 rounded-full bg-background-focus" />
+              ) : (
                 <span className="text-xs text-foreground-off">
                   {yearIssueCount} created
                 </span>
-              ) : null}
+              )}
             </div>
 
             {isInitialLoad ? (
-              <p
-                role="status"
-                className="text-xs text-foreground-off">
-                Loading issue activity…
-              </p>
+              <IssuesSkeleton />
             ) : (
               <div className="min-w-0 overflow-x-auto pb-1">
                 <div
