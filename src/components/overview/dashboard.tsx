@@ -5,7 +5,11 @@ import InboxSkeleton from "@/components/skeletons/dashboard/inbox-skeleton";
 import IssuesSkeleton from "@/components/skeletons/dashboard/issues-skeleton";
 import { ISSUE_HEAT_LEVELS } from "@/constants/overview";
 import type { WorkspaceIssue, WorkspaceSnapshot } from "@/types/user";
-import { getYearIssueDays } from "@/utils/overview";
+import {
+  formatYearIssueDayTooltip,
+  getIssueHeatLevel,
+  getYearIssueDays,
+} from "@/utils/overview";
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -31,7 +35,6 @@ export default function OverviewDashboard({
   const mails = snapshot?.mails ?? [];
   const yearDays = getYearIssueDays(issues, now);
   const yearIssueCount = yearDays.reduce((total, day) => total + day.count, 0);
-  const peakIssueCount = Math.max(1, ...yearDays.map(day => day.count));
   const weekCount = Math.max(...yearDays.map(day => day.week)) + 1;
   const monthLabels = yearDays
     .filter(day => day.date.getDate() === 1)
@@ -151,9 +154,8 @@ export default function OverviewDashboard({
                   </div>
 
                   {yearDays.map(day => {
-                    const level = day.count === 0
-                      ? 0
-                      : Math.min(3, Math.ceil((day.count / peakIssueCount) * 3));
+                    const level = getIssueHeatLevel(day.count);
+                    const dayLabel = formatYearIssueDayTooltip(day.date, day.count);
 
                     return (
                       <div
@@ -165,8 +167,8 @@ export default function OverviewDashboard({
                         }}>
                         <div
                           className={`h-full w-full rounded-[3px] ${ISSUE_HEAT_LEVELS[level]}`}
-                          title={`${day.date.toLocaleDateString("en", { month: "short", day: "numeric" })}: ${day.count} issue${day.count === 1 ? "" : "s"}`}
-                          aria-label={`${day.date.toLocaleDateString("en", { month: "long", day: "numeric" })}: ${day.count} issues`}
+                          title={dayLabel}
+                          aria-label={dayLabel}
                         />
                       </div>
                     );
