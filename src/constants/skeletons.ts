@@ -18,3 +18,12 @@ export const INBOX_ROW_BAR_WIDTHS = [
 export const ISSUE_HEATMAP_WEEK_COUNT = 53;
 export const ISSUE_HEATMAP_DAYS_PER_WEEK = 7;
 export const ISSUE_HEATMAP_MONTH_COUNT = 12;
+
+export const ISSUE_RESULTS_SKELETON_COUNT = 5;
+export const ISSUE_RESULTS_TITLE_BAR_WIDTHS = [
+  "w-40",
+  "w-56",
+  "w-32",
+  "w-48",
+  "w-36",
+];

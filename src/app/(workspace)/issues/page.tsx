@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type SubmitEvent } from "react";
 
 import IssueFilters from "@/components/issues/issue-filters";
 import IssueForm from "@/components/issues/issue-form";
+import IssueDeleteDialog from "@/components/issues/issue-delete-dialog";
 import IssueResults from "@/components/issues/issue-results";
 import IssueToolbar from "@/components/issues/issue-toolbar";
 import DashLayout from "@/components/layouts/dash";
@@ -14,7 +15,7 @@ import type { IssueFormValues, IssueItem } from "@/types/issues";
 import type { IssueStatus, IssueType, UserRole } from "@/types/user";
 import { apiFetch } from "@/utils/api-fetch";
 import { IssuesCache } from "@/utils/cache";
-import { filterIssues } from "@/utils/issues";
+import { buildIssueUpdatePayload, filterIssues } from "@/utils/issues";
 import { refreshSessionUser } from "@/utils/session";
 import { useIssueRefresh } from "@/utils/use-issue-refresh";
 import { useRouter } from "next/navigation";
@@ -28,15 +29,23 @@ export default function IssuesPage() {
   const [status, setStatus] = useState<"ALL" | IssueStatus>("ALL");
   const [type, setType] = useState<"ALL" | IssueType>("ALL");
   const [showForm, setShowForm] = useState(false);
+  const [editingIssue, setEditingIssue] = useState<IssueItem | null>(null);
+  const [deletingIssue, setDeletingIssue] = useState<IssueItem | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<IssueFormValues>(initialIssueForm);
+  const [createForm, setCreateForm] = useState<IssueFormValues>(initialIssueForm);
+  const [editForm, setEditForm] = useState<IssueFormValues>(initialIssueForm);
   const clearIssues = useCallback(() => {
     setIssues([]);
     setUnread(0);
     setRole("USER");
     setShowForm(false);
-    setForm({ ...initialIssueForm });
+    setEditingIssue(null);
+    setDeletingIssue(null);
+    setCreateForm({ ...initialIssueForm });
+    setEditForm({ ...initialIssueForm });
   }, []);
 
   const refresh = useCallback(async (signal: AbortSignal) => {
@@ -82,25 +91,68 @@ export default function IssuesPage() {
   const createIssue = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setFormError(null);
 
     const response = await apiFetch("/api/issues", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(createForm),
     });
     const data = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
 
     if (!response.ok) {
-      setError(data?.message ?? "Unable to create issue.");
+      setFormError(data?.message ?? "Unable to create issue.");
       return;
     }
 
-    setForm({ ...initialIssueForm });
+    setCreateForm({ ...initialIssueForm });
+    setFormError(null);
     setShowForm(false);
 
     await load(true);
+  };
+
+  const openEditIssue = (issue: IssueItem) => {
+    setEditForm({
+      title: issue.title,
+      description: issue.description ?? "",
+      type: issue.type,
+      priority: issue.priority,
+    });
+    setFormError(null);
+    setEditingIssue(issue);
+  };
+
+  const updateIssue = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingIssue || isSavingEdit) return;
+
+    setFormError(null);
+    setIsSavingEdit(true);
+    try {
+      const response = await apiFetch(`/api/issues/${editingIssue.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildIssueUpdatePayload(editForm, role)),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+
+      if (!response.ok) {
+        setFormError(data?.message ?? "Unable to update issue.");
+        return;
+      }
+
+      setEditingIssue(null);
+      await load(true);
+    } catch {
+      setFormError("Unable to update issue.");
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   return (
@@ -119,6 +171,7 @@ export default function IssuesPage() {
             onRefresh={() => void load(true)}
             onCreateIssue={() => {
               setError(null);
+              setFormError(null);
               setShowForm(true);
             }}
           />
@@ -138,6 +191,8 @@ export default function IssuesPage() {
             issues={filteredIssues}
             role={role}
             onOpenIssue={(issueId) => router.push(`/issues/${issueId}`)}
+            onEditIssue={openEditIssue}
+            onDeleteIssue={setDeletingIssue}
           />
         </div>
       </main>
@@ -149,15 +204,39 @@ export default function IssuesPage() {
         title="New issue"
         description="Describe what you need so the team can follow up.">
         <IssueForm
-          form={form}
-          error={error}
+          form={createForm}
+          error={formError}
           onChange={(updates) =>
-            setForm((previous) => ({ ...previous, ...updates }))
+            setCreateForm((previous) => ({ ...previous, ...updates }))
           }
           onSubmit={createIssue}
           onCancel={() => setShowForm(false)}
         />
       </Dialog>
+
+      <Dialog
+        isOpen={editingIssue !== null}
+        onClose={() => setEditingIssue(null)}
+        size="lg"
+        title="Edit issue">
+        <IssueForm
+          form={editForm}
+          error={formError}
+          onChange={(updates) =>
+            setEditForm((previous) => ({ ...previous, ...updates }))
+          }
+          onSubmit={updateIssue}
+          onCancel={() => setEditingIssue(null)}
+          submitLabel={isSavingEdit ? "Saving..." : "Save changes"}
+          priorityDisabled={role !== "DEVELOPER" || isSavingEdit}
+        />
+      </Dialog>
+
+      <IssueDeleteDialog
+        issue={deletingIssue}
+        onClose={() => setDeletingIssue(null)}
+        onDeleted={() => load(true)}
+      />
     </DashLayout>
   );
 }

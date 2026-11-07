@@ -9,6 +9,11 @@ export const initialIssueForm: IssueFormValues = {
   priority: "MEDIUM",
 };
 
+export const ISSUE_CONTEXT_MENU_WIDTH = 176;
+export const ISSUE_CONTEXT_MENU_HEIGHT = 80;
+export const ISSUE_CONTEXT_MENU_OFFSET = 4;
+export const ISSUE_CONTEXT_MENU_VIEWPORT_PADDING = 8;
+
 export const typeLabels: Record<IssueType, string> = {
   BUG: "Bug",
   FEATURE: "Feature",
