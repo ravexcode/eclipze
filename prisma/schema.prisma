@@ -506,18 +506,39 @@ model AuthSession {
 }
 
 model VerificationCode {
-  id         String                  @id @default(cuid())
-  userId     String
-  purpose    VerificationCodePurpose
-  codeHash   String
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime                @default(now())
-  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String                  @id @default(cuid())
+  userId              String
+  purpose             VerificationCodePurpose
+  codeHash            String
+  // Failed and successful checks against this code; the code is rejected once it reaches the limit.
+  attempts            Int                     @default(0)
+  // Hash of the token in the cookie of the browser that requested the code. Email
+  // verification only succeeds from that browser, so a code someone else requested is useless.
+  requesterTokenHash  String?
+  // Credentials that browser chose at sign-up. Verifying the email applies them, because a
+  // password on an unverified account was never proven to belong to the email owner.
+  pendingPasswordHash String?
+  pendingUsername     String?
+  expiresAt           DateTime
+  consumedAt          DateTime?
+  createdAt           DateTime                @default(now())
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, purpose, expiresAt])
   @@index([consumedAt])
   @@map("verification_codes")
+}
+
+// Fixed-window request counters for sensitive endpoints. The key is a SHA-256 hash of
+// the rule name and subject (IP, email, or user id), so no raw identifier is stored.
+model RateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_buckets")
 }
 
 model AuthAccount {

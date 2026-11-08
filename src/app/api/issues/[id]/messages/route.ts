@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { encryptContent } from "@/lib/content-encryption";
 import { getIssueAccessFilter, getIssueRecipientIds } from "@/lib/issue-access";
 import { badRequest, notFound, parseBody, requiredString } from "@/lib/workspace-api";
 import prisma from "@/lib/prisma";
@@ -31,7 +32,7 @@ export async function POST(request: Request, context: Context) {
     if (!issue) return null;
 
     const created = await transaction.issueMessage.create({
-      data: { issueId, authorId: user.id, body: text.value },
+      data: { issueId, authorId: user.id, body: encryptContent(text.value, "issue-message.body") },
     });
     const recipientIds = getIssueRecipientIds(issue, user.id);
     if (recipientIds.length) {
@@ -45,6 +46,7 @@ export async function POST(request: Request, context: Context) {
   return NextResponse.json({
     message: {
       ...message,
+      body: text.value,
       createdAt: message.createdAt.toISOString(),
       updatedAt: message.updatedAt.toISOString(),
     },

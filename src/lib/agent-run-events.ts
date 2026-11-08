@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { encryptContent, encryptContentJson } from "@/lib/content-encryption";
 import type { AgentRunEventType } from "@/types/agent-runner";
 
 type RunEventInput = {
@@ -35,8 +36,8 @@ export async function appendRunEventTransaction(
         runId,
         sequence: (previous?.sequence ?? 0) + 1,
         type: event.type,
-        message: event.message.slice(0, 8_000),
-        metadata: event.metadata,
+        message: encryptContent(event.message.slice(0, 8_000), "agent-run-event.message"),
+        metadata: encryptContentJson(event.metadata, "agent-run-event.metadata"),
       },
     });
   }, { isolationLevel: "ReadCommitted" });

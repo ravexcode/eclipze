@@ -28,10 +28,8 @@ COPY prisma ./prisma
 
 # NEXT_PUBLIC values are embedded in browser bundles during the build.
 ARG NEXT_PUBLIC_API_KEY
-ARG NEXT_PUBLIC_CRYPTO_SECRET_KEY
 
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
-ENV NEXT_PUBLIC_CRYPTO_SECRET_KEY=${NEXT_PUBLIC_CRYPTO_SECRET_KEY}
 
 # Building and generating Prisma Client do not require a running database.
 RUN DATABASE_URL=postgresql://build:build@localhost:5432/eclipse pnpm build

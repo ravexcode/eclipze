@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { encryptApiKey } from "@/lib/ai-credentials";
 import { getCurrentUser } from "@/lib/auth";
 import { verifyMcpTool } from "@/lib/mcp-client";
+import { getMcpConnectionCredentialContext } from "@/utils/ai-credentials";
 import { assertPublicHttpsUrl } from "@/lib/mcp-url";
 import prisma from "@/lib/prisma";
 import { badRequest, parseBody } from "@/lib/workspace-api";
@@ -87,8 +88,8 @@ export async function POST(request: Request) {
   let encryptedToken: string | null = null;
   try {
     await assertPublicHttpsUrl(rawUrl);
-    encryptedToken = token ? encryptApiKey(token) : null;
-    await verifyMcpTool({ url: rawUrl, encryptedToken }, toolName);
+    encryptedToken = token ? encryptApiKey(token, getMcpConnectionCredentialContext(user.id)) : null;
+    await verifyMcpTool({ userId: user.id, url: rawUrl, encryptedToken }, toolName);
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : "Unable to connect to the MCP server.");
   }

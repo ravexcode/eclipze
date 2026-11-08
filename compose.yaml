@@ -8,7 +8,6 @@ services:
       target: runtime
       args:
         NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY:?Set NEXT_PUBLIC_API_KEY before building}
-        NEXT_PUBLIC_CRYPTO_SECRET_KEY: ${NEXT_PUBLIC_CRYPTO_SECRET_KEY:-}
     init: true
     restart: unless-stopped
     env_file:

@@ -1,6 +1,7 @@
 import { IconArrowBackUp, IconExternalLink } from "@tabler/icons-react";
 
 import type { MailItem } from "@/types/mail";
+import { getMailUserLabel } from "@/utils/mail";
 
 type MailDetailProps = {
   mail: MailItem;
@@ -18,10 +19,6 @@ function formatDate(value: string) {
   return MAIL_DATE_FORMATTER.format(new Date(value));
 }
 
-function getPersonLabel(person: MailItem["sender"]) {
-  return person.username ? `${person.username} (${person.email})` : person.email;
-}
-
 export default function MailDetail({ mail, folder, onReply }: MailDetailProps) {
   return (
     <article className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -29,10 +26,10 @@ export default function MailDetail({ mail, folder, onReply }: MailDetailProps) {
         <div className="min-w-0">
           <h1 className="break-words text-lg font-medium tracking-[-0.02em]">{mail.subject}</h1>
           <p className="mt-3 break-all text-xs text-foreground-off">
-            <span className="text-foreground">From</span> {getPersonLabel(mail.sender)}
+            <span className="text-foreground">From</span> {getMailUserLabel(mail.sender)}
           </p>
           <p className="mt-1 break-all text-xs text-foreground-off">
-            <span className="text-foreground">To</span> {getPersonLabel(mail.recipient)}
+            <span className="text-foreground">To</span> {getMailUserLabel(mail.recipient)}
           </p>
         </div>
         <time className="text-xs text-foreground-off">{formatDate(mail.sentAt)}</time>

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   createHash,
+  createHmac,
   randomBytes,
   randomInt,
   scrypt,
@@ -13,6 +14,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import type { Prisma } from "@prisma/client";
+
+import {
+  AUTH_CODE_SECRET_ENV,
+  VERIFICATION_REQUESTER_COOKIE,
+  VERIFICATION_REQUESTER_COOKIE_PATH,
+} from "@/constants/auth";
+import { VERIFICATION_CODE_MAX_ATTEMPTS } from "@/constants/rate-limit";
 import prisma from "@/lib/prisma";
 import type { UserPlan, UserRole } from "@/types/user";
 
@@ -84,8 +93,22 @@ export function generateVerificationCode(length = 6) {
   return code;
 }
 
+function getAuthCodeSecret() {
+  const secret = process.env[AUTH_CODE_SECRET_ENV];
+
+  if (!secret) {
+    throw new Error(`${AUTH_CODE_SECRET_ENV} is not configured.`);
+  }
+
+  return secret;
+}
+
+// Keyed with a server secret: a 6-digit code has only 10^6 values, so a plain hash
+// leaked from the database could be reversed instantly.
 function createCodeHash(userId: string, purpose: AuthCodePurpose, code: string) {
-  return hashSecret(`${userId}:${purpose}:${code}`);
+  return createHmac("sha256", getAuthCodeSecret())
+    .update(`${userId}:${purpose}:${code}`)
+    .digest("hex");
 }
 
 function createSessionToken() {
@@ -115,12 +138,47 @@ export function serializeUser(user: {
   };
 }
 
+type PendingCredentials = {
+  passwordHash: string;
+  username: string;
+};
+
 export async function createVerificationCode(input: {
   userId: string;
   purpose: AuthCodePurpose;
+  // Email verification codes only: the browser that may use the code.
+  requesterTokenHash?: string | null;
+  // Email verification codes only: credentials to apply once the email is verified.
+  pendingCredentials?: PendingCredentials | null;
+  // Resends keep the pending credentials, but only for the browser that chose them.
+  inheritPendingCredentials?: boolean;
 }) {
   const code = generateVerificationCode();
   const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+
+  let pendingPasswordHash = input.pendingCredentials?.passwordHash ?? null;
+  let pendingUsername = input.pendingCredentials?.username ?? null;
+
+  if (input.inheritPendingCredentials && input.requesterTokenHash && !input.pendingCredentials) {
+    const previousCode = await prisma.verificationCode.findFirst({
+      where: {
+        userId: input.userId,
+        purpose: input.purpose,
+        consumedAt: null,
+        requesterTokenHash: input.requesterTokenHash,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        pendingPasswordHash: true,
+        pendingUsername: true,
+      },
+    });
+
+    pendingPasswordHash = previousCode?.pendingPasswordHash ?? null;
+    pendingUsername = previousCode?.pendingUsername ?? null;
+  }
 
   await prisma.verificationCode.deleteMany({
     where: {
@@ -135,6 +193,9 @@ export async function createVerificationCode(input: {
       userId: input.userId,
       purpose: input.purpose,
       codeHash: createCodeHash(input.userId, input.purpose, code),
+      requesterTokenHash: input.requesterTokenHash ?? null,
+      pendingPasswordHash,
+      pendingUsername,
       expiresAt,
     },
   });
@@ -145,65 +206,243 @@ export async function createVerificationCode(input: {
   };
 }
 
-export async function consumeVerificationCode(input: {
-  email: string;
-  purpose: AuthCodePurpose;
-  code: string;
-}) {
-  const user = await prisma.user.findUnique({
-    where: {
-      email: normalizeEmail(input.email),
-    },
+/**
+ * Returns the hash of this browser's verification token, creating the cookie when it is
+ * missing. The cookie lives as long as a code, and each new code refreshes it.
+ */
+export async function ensureVerificationRequesterTokenHash() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(VERIFICATION_REQUESTER_COOKIE)?.value || randomBytes(32).toString("base64url");
+
+  cookieStore.set(VERIFICATION_REQUESTER_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: VERIFICATION_REQUESTER_COOKIE_PATH,
+    maxAge: VERIFICATION_CODE_TTL_MS / 1000,
   });
 
-  if (!user) {
-    return null;
+  return hashSecret(token);
+}
+
+export async function readVerificationRequesterTokenHash() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(VERIFICATION_REQUESTER_COOKIE)?.value;
+
+  return token ? hashSecret(token) : null;
+}
+
+export async function clearVerificationRequesterToken() {
+  const cookieStore = await cookies();
+
+  cookieStore.delete({
+    name: VERIFICATION_REQUESTER_COOKIE,
+    path: VERIFICATION_REQUESTER_COOKIE_PATH,
+  });
+}
+
+type VerificationCodeClient = Pick<Prisma.TransactionClient, "verificationCode">;
+
+function isMatchingHash(storedHash: string, candidateHash: string) {
+  const storedBuffer = Buffer.from(storedHash, "hex");
+  const candidateBuffer = Buffer.from(candidateHash, "hex");
+
+  if (storedBuffer.length !== candidateBuffer.length) {
+    return false;
   }
 
-  const verificationCode = await prisma.verificationCode.findFirst({
+  return timingSafeEqual(storedBuffer, candidateBuffer);
+}
+
+/**
+ * Checks a code against the user's latest active code and consumes it on a match.
+ * Each check uses one attempt, so a code stops working after
+ * VERIFICATION_CODE_MAX_ATTEMPTS guesses even if it has not expired.
+ * When `requesterTokenHash` is given, the code must also have been requested by that
+ * browser. Returns the consumed code, or null.
+ */
+async function claimVerificationCode(client: VerificationCodeClient, input: {
+  userId: string;
+  purpose: AuthCodePurpose;
+  code: string;
+  requesterTokenHash?: string;
+}) {
+  const now = new Date();
+
+  const activeCode = await client.verificationCode.findFirst({
     where: {
-      userId: user.id,
+      userId: input.userId,
       purpose: input.purpose,
       consumedAt: null,
       expiresAt: {
-        gt: new Date(),
+        gt: now,
       },
-      codeHash: createCodeHash(user.id, input.purpose, input.code),
+      attempts: {
+        lt: VERIFICATION_CODE_MAX_ATTEMPTS,
+      },
     },
     orderBy: {
       createdAt: "desc",
     },
+    select: {
+      id: true,
+      codeHash: true,
+      requesterTokenHash: true,
+      pendingPasswordHash: true,
+      pendingUsername: true,
+    },
   });
 
-  if (!verificationCode) {
+  if (!activeCode) {
     return null;
   }
 
-  await prisma.verificationCode.update({
+  // Reserve the attempt before comparing, so parallel guesses cannot exceed the limit.
+  const reservedAttempt = await client.verificationCode.updateMany({
     where: {
-      id: verificationCode.id,
+      id: activeCode.id,
+      consumedAt: null,
+      attempts: {
+        lt: VERIFICATION_CODE_MAX_ATTEMPTS,
+      },
     },
     data: {
-      consumedAt: new Date(),
+      attempts: {
+        increment: 1,
+      },
     },
   });
 
-  return user;
+  if (reservedAttempt.count === 0) {
+    return null;
+  }
+
+  const candidateHash = createCodeHash(input.userId, input.purpose, input.code);
+
+  if (!isMatchingHash(activeCode.codeHash, candidateHash)) {
+    return null;
+  }
+
+  if (input.requesterTokenHash !== undefined) {
+    const isSameRequester = activeCode.requesterTokenHash !== null &&
+      isMatchingHash(activeCode.requesterTokenHash, input.requesterTokenHash);
+
+    if (!isSameRequester) {
+      return null;
+    }
+  }
+
+  const consumedCode = await client.verificationCode.updateMany({
+    where: {
+      id: activeCode.id,
+      consumedAt: null,
+    },
+    data: {
+      consumedAt: now,
+    },
+  });
+
+  return consumedCode.count === 1 ? activeCode : null;
+}
+
+/**
+ * Verifies an email with a code requested by this browser, then applies the credentials
+ * that browser chose at sign-up. A password already on an unverified account was never
+ * proven to belong to the email owner, so it is never kept: without pending credentials
+ * the password is removed and the owner sets one through password recovery.
+ */
+export async function verifyEmailWithCode(input: {
+  email: string;
+  code: string;
+  requesterTokenHash: string;
+}) {
+  const email = normalizeEmail(input.email);
+
+  return prisma.$transaction(async transaction => {
+    const user = await transaction.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return null;
+    }
+
+    // A wrong code returns null without throwing, so the used attempt is still committed.
+    const claimedCode = await claimVerificationCode(transaction, {
+      userId: user.id,
+      purpose: "EMAIL_VERIFICATION",
+      code: input.code,
+      requesterTokenHash: input.requesterTokenHash,
+    });
+
+    if (!claimedCode) {
+      return null;
+    }
+
+    if (user.emailVerifiedAt) {
+      return { user, isPasswordRemoved: false };
+    }
+
+    let username = user.username;
+
+    if (claimedCode.pendingUsername && claimedCode.pendingUsername !== user.username) {
+      const usernameOwner = await transaction.user.findUnique({
+        where: { username: claimedCode.pendingUsername },
+        select: { id: true },
+      });
+
+      if (!usernameOwner) {
+        username = claimedCode.pendingUsername;
+      }
+    }
+
+    const verifiedUser = await transaction.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        passwordHash: claimedCode.pendingPasswordHash,
+        username,
+      },
+    });
+
+    await transaction.authSession.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return {
+      user: verifiedUser,
+      isPasswordRemoved: claimedCode.pendingPasswordHash === null,
+    };
+  });
 }
 
 export async function resetPasswordWithCode(input: { email: string; code: string; passwordHash: string }) {
   const email = normalizeEmail(input.email);
   return prisma.$transaction(async (transaction) => {
     const user = await transaction.user.findUnique({ where: { email } });
-    if (!user?.emailVerifiedAt) return false;
-    const verificationCode = await transaction.verificationCode.findFirst({
-      where: { userId: user.id, purpose: "PASSWORD_RESET", consumedAt: null, expiresAt: { gt: new Date() }, codeHash: createCodeHash(user.id, "PASSWORD_RESET", input.code) },
-      orderBy: { createdAt: "desc" },
+
+    if (!user?.emailVerifiedAt) {
+      return false;
+    }
+
+    // A wrong code returns false without throwing, so the used attempt is still committed.
+    const claimedCode = await claimVerificationCode(transaction, {
+      userId: user.id,
+      purpose: "PASSWORD_RESET",
+      code: input.code,
     });
-    if (!verificationCode) return false;
-    await transaction.verificationCode.update({ where: { id: verificationCode.id }, data: { consumedAt: new Date() } });
-    await transaction.user.update({ where: { id: user.id }, data: { passwordHash: input.passwordHash } });
-    await transaction.authSession.deleteMany({ where: { userId: user.id } });
+
+    if (!claimedCode) {
+      return false;
+    }
+
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { passwordHash: input.passwordHash },
+    });
+
+    await transaction.authSession.deleteMany({
+      where: { userId: user.id },
+    });
+
     return true;
   });
 }

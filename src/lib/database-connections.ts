@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { DATABASE_PRIVATE_HEADERS, DATABASE_PROVIDER_LABELS } from "@/constants/database-connections";
 import { decryptApiKey, encryptApiKey } from "@/lib/ai-credentials";
 import { DATABASE_PROVIDER_CLIENTS } from "@/lib/database-providers";
+import { getDatabaseConnectionCredentialContext } from "@/utils/ai-credentials";
 import { assertPublicMongoHosts } from "@/lib/database-providers/mongodb";
 import type { DatabaseCredential } from "@/lib/database-providers/types";
 import { assertPublicHttpsUrl } from "@/lib/mcp-url";
@@ -14,6 +15,7 @@ import { createCredentialHint } from "@/utils/database-connections";
 
 type StoredConnection = {
   id: string;
+  userId: string;
   provider: DatabaseProvider;
   encryptedCredential: string;
   credentialHint: string | null;
@@ -39,7 +41,10 @@ export function readDatabaseCredential(connection: StoredConnection): DatabaseCr
   try {
     return {
       provider: connection.provider,
-      secret: decryptApiKey(connection.encryptedCredential),
+      secret: decryptApiKey(
+        connection.encryptedCredential,
+        getDatabaseConnectionCredentialContext(connection.userId, connection.provider),
+      ),
       baseUrl: connection.baseUrl,
     };
   } catch {
@@ -85,7 +90,10 @@ export async function connectDatabaseProvider(input: {
   await DATABASE_PROVIDER_CLIENTS[input.provider].validate(credential);
 
   const data = {
-    encryptedCredential: encryptApiKey(credential.secret),
+    encryptedCredential: encryptApiKey(
+      credential.secret,
+      getDatabaseConnectionCredentialContext(input.userId, input.provider),
+    ),
     credentialHint: createCredentialHint(input.provider, credential.secret),
     baseUrl: credential.baseUrl,
   };

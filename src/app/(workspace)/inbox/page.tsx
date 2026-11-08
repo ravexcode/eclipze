@@ -25,6 +25,7 @@ import type {
   MailItem
 } from "@/types/mail";
 import { apiFetch } from "@/utils/api-fetch";
+import { getMailUserLabel, updateMailForm } from "@/utils/mail";
 
 const EMPTY_FORM: MailFormValues = { to: "", subject: "", body: "" };
 
@@ -79,7 +80,7 @@ export default function InboxPage() {
 
     return mails.filter(mail => {
       const person = folder === "inbox" ? mail.sender : mail.recipient;
-      return `${mail.subject} ${mail.body} ${person.username ?? ""} ${person.email}`
+      return `${mail.subject} ${mail.body} ${person.username ?? ""} ${person.emailHint}`
         .toLocaleLowerCase()
         .includes(search);
     });
@@ -115,7 +116,12 @@ export default function InboxPage() {
       setForm(EMPTY_FORM);
     } else {
       const subject = /^re:\s/i.test(replyTo.subject) ? replyTo.subject : `Re: ${replyTo.subject}`;
-      setForm({ to: replyTo.sender.email, subject: subject.slice(0, 200), body: "" });
+      setForm({
+        to: getMailUserLabel(replyTo.sender),
+        recipientId: replyTo.sender.id,
+        subject: subject.slice(0, 200),
+        body: "",
+      });
     }
 
     setError(null);
@@ -258,7 +264,7 @@ export default function InboxPage() {
           values={form}
           busy={sending}
           error={error}
-          onChange={updates => setForm(current => ({ ...current, ...updates }))}
+          onChange={updates => setForm(current => updateMailForm(current, updates))}
           onSubmit={sendMail}
           onCancel={closeCompose}
         />

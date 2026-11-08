@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { RATE_LIMIT_RULES } from "@/constants/rate-limit";
 import {
   clearSession,
   getCurrentSession,
@@ -11,6 +12,8 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { enforceRateLimits } from "@/lib/rate-limit";
+import { notifySecurityEvent } from "@/lib/security-email";
 import { ACCOUNT_DELETION_DELAY_DAYS } from "@/types/user";
 import { isValidAvatarUrl, normalizeAvatarUrl } from "@/utils/avatar-url";
 import { Prisma } from "@prisma/client";
@@ -95,6 +98,15 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ message: "Current password, new password, and password confirmation are required." }, { status: 400 });
     }
 
+    // Limits password guessing by anyone who holds a stolen session cookie.
+    const rateLimitResponse = await enforceRateLimits([
+      { rule: RATE_LIMIT_RULES.passwordCheckByUser, subject: user.id },
+    ]);
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     if (!user.passwordHash || !(await verifyPassword(body.currentPassword, user.passwordHash))) {
       return NextResponse.json({ message: "Current password is incorrect." }, { status: 400 });
     }
@@ -150,6 +162,11 @@ export async function PATCH(request: Request) {
 
     const changedPassword = Boolean(data.passwordHash);
     const changedUsername = Boolean(data.username);
+
+    if (changedPassword) {
+      notifySecurityEvent(request, { to: updatedUser.email, kind: "PASSWORD_CHANGED" });
+    }
+
     const message = changedPassword && changedUsername
       ? "Profile and password updated successfully."
       : changedPassword
@@ -192,6 +209,14 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: "Current password is required." }, { status: 400 });
   }
 
+  const rateLimitResponse = await enforceRateLimits([
+    { rule: RATE_LIMIT_RULES.passwordCheckByUser, subject: user.id },
+  ]);
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   if (!user.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) {
     return NextResponse.json({ message: "Current password is incorrect." }, { status: 400 });
   }
@@ -200,6 +225,8 @@ export async function DELETE(request: Request) {
     where: { id: user.id },
   });
   await clearSession();
+
+  notifySecurityEvent(request, { to: user.email, kind: "ACCOUNT_DELETED" });
 
   return NextResponse.json({ message: "Account deleted successfully." });
 }

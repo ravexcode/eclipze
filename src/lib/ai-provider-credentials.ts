@@ -5,6 +5,7 @@ import { getOpenRouterCredential } from "@/lib/openrouter";
 import prisma from "@/lib/prisma";
 import { PROVIDER_LABELS } from "@/constants/agent-providers";
 import type { AiProvider, ProviderCredential } from "@/types/ai";
+import { getAiProviderCredentialContext } from "@/utils/ai-credentials";
 
 export async function getProviderApiKey(userId: string, provider: AiProvider) {
   const connection = await prisma.aiProviderConnection.findUnique({
@@ -15,7 +16,7 @@ export async function getProviderApiKey(userId: string, provider: AiProvider) {
   if (!connection?.encryptedApiKey) return null;
 
   try {
-    return decryptApiKey(connection.encryptedApiKey);
+    return decryptApiKey(connection.encryptedApiKey, getAiProviderCredentialContext(userId, provider));
   } catch {
     throw new Error(`Unable to read the saved ${PROVIDER_LABELS[provider]} connection. Reconnect it in Settings.`);
   }

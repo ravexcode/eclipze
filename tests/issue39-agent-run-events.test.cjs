@@ -2,7 +2,14 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { loadTypeScript } = require("./helpers/load-typescript.cjs");
 
-const { appendRunEventTransaction } = loadTypeScript("src/lib/agent-run-events.ts");
+// Content encryption reads its key from the environment.
+const ENCRYPTION_GLOBALS = {
+  Buffer,
+  process: { env: { AI_CREDENTIALS_ENCRYPTION_KEY: "test-encryption-secret" } },
+};
+
+const { appendRunEventTransaction } = loadTypeScript("src/lib/agent-run-events.ts", { globals: ENCRYPTION_GLOBALS });
+const { decryptContent } = loadTypeScript("src/lib/content-encryption.ts", { globals: ENCRYPTION_GLOBALS });
 
 function createDatabase({ runIds = ["run-1"], beforeCreate = async () => {} } = {}) {
   const events = [];
@@ -252,5 +259,6 @@ test("event message output remains bounded to 8,000 characters", async () => {
     message: "x".repeat(8_100),
   });
 
-  assert.equal(event.message.length, 8_000);
+  assert.match(event.message, /^enc:v2\./);
+  assert.equal(decryptContent(event.message, "agent-run-event.message").length, 8_000);
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { decryptContent, decryptContentJson } from "@/lib/content-encryption";
 import prisma from "@/lib/prisma";
 import { notFound } from "@/lib/workspace-api";
 
@@ -34,8 +35,8 @@ export async function GET(request: Request, context: RouteContext) {
     runId: event.runId,
     sequence: event.sequence,
     type: event.type,
-    message: event.message,
-    metadata: event.metadata,
+    message: decryptContent(event.message, "agent-run-event.message"),
+    metadata: decryptContentJson(event.metadata, "agent-run-event.metadata"),
     createdAt: event.createdAt.toISOString(),
   })) }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }

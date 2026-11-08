@@ -9,6 +9,11 @@ import { DEFAULT_AGENT_PERMISSION_MODE } from "@/constants/agents";
 import { AGENT_RUN_SUMMARY_SELECT } from "@/constants/agent-runs";
 import prisma from "@/lib/prisma";
 import { appendRunEventTransaction } from "@/lib/agent-run-events";
+import {
+  decryptContent,
+  decryptContentJson,
+  decryptOptionalContent,
+} from "@/lib/content-encryption";
 import { sanitizeRunnerOutput, type RunnerEvent } from "@/lib/agent-runner";
 import { downloadRepositorySnapshot } from "@/lib/repository-snapshot";
 import type { WorkspaceRepositoryProvider } from "@/types/agent-runner";
@@ -90,7 +95,7 @@ export function serializeAgentRunSummary(run: RunSummary) {
     status: run.status,
     model: run.model,
     provider: run.provider,
-    prompt: run.prompt,
+    prompt: decryptOptionalContent(run.prompt, "agent-run.prompt"),
     errorCode: run.errorCode,
     resultSummary: run.resultSummary,
     startedAt: iso(run.startedAt),
@@ -112,7 +117,7 @@ export function serializeAgentRun(run: RunWithRelations) {
     creditReservation: run.creditReservation,
     model: run.model,
     provider: run.provider,
-    prompt: run.prompt,
+    prompt: decryptOptionalContent(run.prompt, "agent-run.prompt"),
     commandKey: run.commandKey,
     instructionsDigest: run.instructionsDigest,
     skills: skillSnapshot,
@@ -130,8 +135,8 @@ export function serializeAgentRun(run: RunWithRelations) {
       runId: event.runId,
       sequence: event.sequence,
       type: event.type,
-      message: event.message,
-      metadata: serializeMetadata(event.metadata),
+      message: decryptContent(event.message, "agent-run-event.message"),
+      metadata: serializeMetadata(decryptContentJson(event.metadata, "agent-run-event.metadata")),
       createdAt: event.createdAt.toISOString(),
     })),
   };
@@ -232,7 +237,9 @@ async function executeAgentRun(runId: string, userId: string) {
       return;
     }
 
-    if (!run.prompt) {
+    const prompt = decryptOptionalContent(run.prompt, "agent-run.prompt");
+
+    if (!prompt) {
       await persistEvent({ type: "ERROR", message: "This task does not include a prompt." });
       await updateRunFailure(run.id, "PROMPT_MISSING", "This task does not include a prompt.");
       await eventQueue;
@@ -247,7 +254,7 @@ async function executeAgentRun(runId: string, userId: string) {
       permissionMode: run.permissionMode === "ASK"
         ? DEFAULT_AGENT_PERMISSION_MODE
         : run.permissionMode as AgentPermissionMode,
-      prompt: run.prompt,
+      prompt,
       repositorySnapshot,
       repositoryUrl: run.repository.repositoryUrl,
       defaultBranch: run.repository.defaultBranch,
