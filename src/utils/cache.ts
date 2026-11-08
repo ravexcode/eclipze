@@ -96,6 +96,35 @@ export default class CacheDB {
 }
 
 export class IssuesCache {
+  static removeIssue(userId: string, issueId: string) {
+    if (!userId) return;
+
+    for (const [key, entry] of issueEntries) {
+      try {
+        const parsedKey: unknown = JSON.parse(key);
+        if (
+          !Array.isArray(parsedKey) ||
+          parsedKey[0] !== userId
+        ) {
+          continue;
+        }
+
+        issueEntries.set(key, {
+          ...entry,
+          issues: entry.issues.filter((issue) => {
+            if (typeof issue !== "object" || issue === null || !("id" in issue)) {
+              return true;
+            }
+
+            return issue.id !== issueId;
+          }),
+        });
+      } catch {
+        // Ignore malformed cache keys that do not belong to this user.
+      }
+    }
+  }
+
   static update<T>(
     userId: string,
     role: UserRole,

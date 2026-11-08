@@ -81,7 +81,7 @@ export default function ProfileSection(props: {
       description="How you appear across Eclipse.">
       <button
         type="button"
-        className={`flex min-h-16 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-200 hover:border-foreground-off/30 hover:bg-background-focus/60 focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${isOpen ? "border-foreground-off/30 bg-background-focus/60" : "border-background-focus bg-background-card"}`}
+        className={`flex min-h-16 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-200 hover:border-foreground-off/30 hover:bg-background-focus/60 focus-visible:ring-1 focus-visible:ring-accent ${isOpen ? "border-foreground-off/30 bg-background-focus/60" : "border-background-focus bg-background-card"}`}
         onClick={() => {
           setIsOpen((value) => !value);
           setError(null);

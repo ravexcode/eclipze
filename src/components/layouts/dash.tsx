@@ -9,7 +9,11 @@ import type { UserProfile } from "@/types/user";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { usePathname } from "next/navigation";
 
-import { getSessionUser } from "@/utils/session";
+import {
+  getCachedSessionUser,
+  getSessionUser,
+  toUserProfile,
+} from "@/utils/session";
 
 import type { SelectedSection } from "@/constants/components/sidebar-labels";
 
@@ -23,7 +27,13 @@ const USER_UPDATED_EVENT = "user-updated";
 
 export default function DashLayout(props: Props) {
   const pathname = usePathname();
-  const [user, setUser] = useState<UserProfile>();
+  // Each page mounts its own layout, so the cached user prevents a skeleton flash on navigation.
+  const [user, setUser] = useState<UserProfile | undefined>(() => {
+    const cachedUser = getCachedSessionUser();
+
+    return cachedUser ? toUserProfile(cachedUser) : undefined;
+  });
+  const [userLoadFailed, setUserLoadFailed] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
@@ -42,23 +52,22 @@ export default function DashLayout(props: Props) {
     let cancelled = false;
 
     const loadCurrentUser = async () => {
-      const sessionUser = await getSessionUser();
+      try {
+        const sessionUser = await getSessionUser();
 
-      if (!sessionUser) {
-        props.router.replace("/auth/signin");
-        return;
+        if (!sessionUser) {
+          props.router.replace("/auth/signin");
+          return;
+        }
+
+        if (cancelled) return;
+
+        setUser(toUserProfile(sessionUser));
+        setUserLoadFailed(false);
+      } catch {
+        // A failed request must not leave the navigation stuck behind its skeleton.
+        if (!cancelled) setUserLoadFailed(true);
       }
-
-      if (cancelled) return;
-
-      setUser({
-        name: sessionUser.displayName,
-        avatar: sessionUser.avatarUrl ?? "/logo.svg",
-        email: sessionUser.email,
-        id: sessionUser.id,
-        role: sessionUser.role,
-        plan: sessionUser.plan,
-      });
     };
 
     void loadCurrentUser();
@@ -73,6 +82,7 @@ export default function DashLayout(props: Props) {
       <Sidebar
         selected={props.current}
         user={user}
+        isLoadingUser={!user && !userLoadFailed}
         router={props.router} />
       <div className="relative h-full min-w-0 flex-1 overflow-y-auto">
         {props.children}

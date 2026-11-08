@@ -5,6 +5,13 @@ const OVERVIEW_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const YEAR_ISSUE_DAY_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
 export type MonthIssueDay = {
   day: number;
   count: number;
@@ -17,6 +24,29 @@ export type YearIssueDay = {
   week: number;
   weekday: number;
 };
+
+export function getIssueHeatLevel(count: number) {
+  if (count === 0) {
+    return 0;
+  }
+
+  if (count <= 3) {
+    return 1;
+  }
+
+  if (count <= 7) {
+    return 2;
+  }
+
+  return 3;
+}
+
+export function formatYearIssueDayTooltip(date: Date, count: number) {
+  const formattedDate = YEAR_ISSUE_DAY_FORMATTER.format(date);
+  const issueLabel = count === 1 ? "issue" : "issues";
+
+  return `${formattedDate}: ${count} ${issueLabel}`;
+}
 
 export function formatOverviewMonth(date: Date) {
   const month = OVERVIEW_MONTH_FORMATTER.format(date);

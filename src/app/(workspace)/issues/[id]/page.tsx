@@ -164,7 +164,7 @@ export default function IssueDetailPage() {
               <button
                 type="button"
                 onClick={() => router.push("/issues")}
-                className="w-max rounded-md text-xs text-foreground-off hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                className="w-max rounded-md text-xs text-foreground-off hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent">
                 ← Back to issues
               </button>
 
@@ -279,7 +279,7 @@ export default function IssueDetailPage() {
                 />
                 <button
                   type="submit"
-                  className="self-end rounded-md bg-accent px-3 py-1.5 text-xs transition-colors hover:bg-accent-strong focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                  className="self-end rounded-md bg-accent px-3 py-1.5 text-xs transition-colors hover:bg-accent-strong focus-visible:ring-1 focus-visible:ring-accent">
                   Send reply
                 </button>
               </form>

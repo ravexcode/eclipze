@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+// Components
+import UsageSkeleton from "../skeletons/dashboard/usage-skeleton";
+
 import { AGENT_CREDITS_UPDATED_EVENT } from "@/constants/agent-events";
 import { USAGE_BAR_DEFAULT_CLASS } from "@/constants/usage-limits";
 import type { AiCreditUsage, AiCreditUsageWindow } from "@/types/ai";
@@ -55,29 +58,28 @@ export default function UsageLimits() {
         Usage limits
       </h2>
 
-      {error ? (
-        <p
-          role="alert"
-          className="text-xs text-alert-red">
-          {error}
-        </p>
-      ) : !usage ? (
-        <p
-          role="status"
-          className="text-xs text-foreground-off">
-          Loading usage limits…
-        </p>
-      ) : usage.unlimitedCredits ? (
-        <UnlimitedUsageRow />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {usage.usageWindows.map(window => (
-            <UsageWindowRow
-              key={window.key}
-              window={window} />
-          ))}
-        </div>
-      )}
+      {/* Reserved height keeps the rows below in place when the usage data arrives. */}
+      <div className="flex min-h-30 flex-col gap-4">
+        {error ? (
+          <p
+            role="alert"
+            className="text-xs text-alert-red">
+            {error}
+          </p>
+        ) : !usage ? (
+          <UsageSkeleton />
+        ) : usage.unlimitedCredits ? (
+          <UnlimitedUsageRow />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {usage.usageWindows.map(window => (
+              <UsageWindowRow
+                key={window.key}
+                window={window} />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

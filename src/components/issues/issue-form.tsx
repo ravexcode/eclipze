@@ -11,6 +11,8 @@ type IssueFormProps = {
   onChange: (updates: Partial<IssueFormValues>) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   onCancel: () => void;
+  submitLabel?: string;
+  priorityDisabled?: boolean;
 };
 
 export default function IssueForm({
@@ -19,6 +21,8 @@ export default function IssueForm({
   onChange,
   onSubmit,
   onCancel,
+  submitLabel = "Submit issue",
+  priorityDisabled = false,
 }: IssueFormProps) {
   return (
     <form
@@ -62,6 +66,7 @@ export default function IssueForm({
             onChange={(priority) => onChange({ priority })}
             options={ISSUE_PRIORITY_OPTIONS}
             placeholder="Select a priority"
+            disabled={priorityDisabled}
           />
         </div>
       </div>
@@ -89,7 +94,7 @@ export default function IssueForm({
         <button
           type="submit"
           className="rounded-md bg-accent px-3 py-1.5 text-xs hover:brightness-125">
-          Submit issue
+          {submitLabel}
         </button>
       </div>
     </form>

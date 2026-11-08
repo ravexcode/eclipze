@@ -9,7 +9,7 @@ import {
 
 export type SelectedSection = "overview" | "inbox" | "issues" | "agents" | "projects" | "settings" | "erd" | "billing";
 
-const icon_size = 18; const icon_width = 2;
+const icon_size = 20; const icon_width = 1.5;
 
 export const labels = (selected: SelectedSection) => {
   const data = [

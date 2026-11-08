@@ -90,7 +90,7 @@ export default function MenuSelector<TValue extends string>({
           focusOnOpen.current = event.key === "ArrowUp" ? "last" : "first";
           setExpanded(true);
         }}
-        className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-background-card hover:bg-background-focus px-2.5 py-2 text-left text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50">
+        className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-background-card hover:bg-background-focus px-2.5 py-2 text-left text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50">
         <span className="min-w-0 flex-1 truncate">
           {selectedOption?.label ?? placeholder}
         </span>
@@ -142,7 +142,7 @@ export default function MenuSelector<TValue extends string>({
                     triggerRef.current?.focus();
                   }
                 }}
-                className={`flex w-full flex-col gap-1 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-background-focus focus-visible:outline-2 focus-visible:outline-accent ${selected ? "bg-background-focus" : ""
+                className={`flex w-full flex-col gap-1 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-background-focus ${selected ? "bg-background-focus" : ""
                   }`}>
                 <span className="truncate font-medium text-foreground">
                   {option.label}

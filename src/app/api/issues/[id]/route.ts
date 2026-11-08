@@ -114,3 +114,16 @@ export async function PATCH(request: Request, context: Context) {
   if (!updated) return notFound("Issue not found.");
   return NextResponse.json({ issue: serializeIssue(updated) });
 }
+
+export async function DELETE(_request: Request, context: Context) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const { id } = await context.params;
+  const result = await prisma.issue.deleteMany({
+    where: { id, ...getIssueAccessFilter(user.id) },
+  });
+
+  if (result.count === 0) return notFound("Issue not found.");
+  return NextResponse.json({ deleted: true });
+}

@@ -1,10 +1,16 @@
 import { IconArrowUpRight, IconInbox } from "@tabler/icons-react";
 
 import UsageLimits from "@/components/overview/usage-limits";
+import InboxSkeleton from "@/components/skeletons/dashboard/inbox-skeleton";
+import IssuesSkeleton from "@/components/skeletons/dashboard/issues-skeleton";
 import { ISSUE_HEAT_LEVELS } from "@/constants/overview";
 import type { WorkspaceIssue, WorkspaceSnapshot } from "@/types/user";
 import { getMailUserLabel } from "@/utils/mail";
-import { getYearIssueDays } from "@/utils/overview";
+import {
+  formatYearIssueDayTooltip,
+  getIssueHeatLevel,
+  getYearIssueDays,
+} from "@/utils/overview";
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -30,7 +36,6 @@ export default function OverviewDashboard({
   const mails = snapshot?.mails ?? [];
   const yearDays = getYearIssueDays(issues, now);
   const yearIssueCount = yearDays.reduce((total, day) => total + day.count, 0);
-  const peakIssueCount = Math.max(1, ...yearDays.map(day => day.count));
   const weekCount = Math.max(...yearDays.map(day => day.week)) + 1;
   const monthLabels = yearDays
     .filter(day => day.date.getDate() === 1)
@@ -58,62 +63,56 @@ export default function OverviewDashboard({
             </p>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <UsageLimits />
+          <UsageLimits />
 
-            <section
-              aria-labelledby="inbox-title"
-              className="flex flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2
-                  id="inbox-title"
-                  className="text-xs font-medium">
-                  Inbox
-                </h2>
-                <button
-                  type="button"
-                  onClick={onOpenInbox}
-                  className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
-                  Open all
-                  <IconArrowUpRight size={14} strokeWidth={1.8} />
-                </button>
-              </div>
+          <section
+            aria-labelledby="inbox-title"
+            className="flex flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2
+                id="inbox-title"
+                className="text-xs font-medium">
+                Inbox
+              </h2>
+              <button
+                type="button"
+                onClick={onOpenInbox}
+                className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent">
+                Open all
+                <IconArrowUpRight size={14} strokeWidth={1.8} />
+              </button>
+            </div>
 
-              {isInitialLoad ? (
-                <p
-                  role="status"
-                  className="text-xs text-foreground-off">
-                  Loading inbox…
-                </p>
-              ) : mails.length > 0 ? (
-                <div className="flex flex-col">
-                  {mails.slice(0, 5).map(mail => (
-                    <button
-                      key={mail.id}
-                      type="button"
-                      onClick={onOpenInbox}
-                      className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
-                      <span
-                        aria-hidden="true"
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${mail.readAt ? "bg-background-focus" : "bg-foreground"}`}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-foreground-off">
-                        <span className="mr-2 text-foreground">
-                          {getMailUserLabel(mail.sender)}
-                        </span>
-                        {mail.subject}
+            {isInitialLoad ? (
+              <InboxSkeleton />
+            ) : mails.length > 0 ? (
+              <div className="flex min-h-45 flex-col">
+                {mails.slice(0, 5).map(mail => (
+                  <button
+                    key={mail.id}
+                    type="button"
+                    onClick={onOpenInbox}
+                    className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-accent">
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${mail.readAt ? "bg-background-focus" : "bg-foreground"}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-foreground-off">
+                      <span className="mr-2 text-foreground">
+                        {getMailUserLabel(mail.sender)}
                       </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center justify-center gap-2 py-6 text-xs text-foreground-off">
-                  <IconInbox size={16} strokeWidth={1.7} />
-                  <p>No mail yet.</p>
-                </div>
-              )}
-            </section>
-          </div>
+                      {mail.subject}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-45 flex-1 items-center justify-center gap-2 text-xs text-foreground-off">
+                <IconInbox size={16} strokeWidth={1.7} />
+                <p>No mail yet.</p>
+              </div>
+            )}
+          </section>
 
           <section
             aria-labelledby="issue-activity-title"
@@ -124,19 +123,19 @@ export default function OverviewDashboard({
                 className="text-xs font-medium">
                 {now.getFullYear()} issues
               </h2>
-              {!isInitialLoad ? (
+              {isInitialLoad ? (
+                <span
+                  aria-hidden="true"
+                  className="skeleton h-1.5 w-16 rounded-full bg-background-focus" />
+              ) : (
                 <span className="text-xs text-foreground-off">
                   {yearIssueCount} created
                 </span>
-              ) : null}
+              )}
             </div>
 
             {isInitialLoad ? (
-              <p
-                role="status"
-                className="text-xs text-foreground-off">
-                Loading issue activity…
-              </p>
+              <IssuesSkeleton />
             ) : (
               <div className="min-w-0 overflow-x-auto pb-1">
                 <div
@@ -156,9 +155,8 @@ export default function OverviewDashboard({
                   </div>
 
                   {yearDays.map(day => {
-                    const level = day.count === 0
-                      ? 0
-                      : Math.min(3, Math.ceil((day.count / peakIssueCount) * 3));
+                    const level = getIssueHeatLevel(day.count);
+                    const dayLabel = formatYearIssueDayTooltip(day.date, day.count);
 
                     return (
                       <div
@@ -170,8 +168,8 @@ export default function OverviewDashboard({
                         }}>
                         <div
                           className={`h-full w-full rounded-[3px] ${ISSUE_HEAT_LEVELS[level]}`}
-                          title={`${day.date.toLocaleDateString("en", { month: "short", day: "numeric" })}: ${day.count} issue${day.count === 1 ? "" : "s"}`}
-                          aria-label={`${day.date.toLocaleDateString("en", { month: "long", day: "numeric" })}: ${day.count} issues`}
+                          title={dayLabel}
+                          aria-label={dayLabel}
                         />
                       </div>
                     );

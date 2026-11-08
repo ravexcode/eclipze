@@ -1,17 +1,23 @@
-import { IconAlertTriangle, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconAlertTriangle, IconX } from "@tabler/icons-react";
 
 interface Props {
-  mode: "warn";
+  mode: "warn" | "error";
   message: string;
   onClose(): void;
 }
 
 export default function Snackbar(props: Props) {
+  const isError = props.mode === "error";
+
   return (
     <div
-      role="status"
+      role={isError ? "alert" : "status"}
       className="fixed bottom-5 right-5 z-50 flex max-w-sm items-start gap-3 rounded-md border border-background-focus bg-background-card p-4 text-xs text-foreground">
-      <IconAlertTriangle size={18} className={props.mode === "warn" ? "mt-0.5 shrink-0 text-warning" : "mt-0.5 shrink-0"} />
+      {isError ? (
+        <IconAlertCircle size={18} className="mt-0.5 shrink-0 text-alert-red" />
+      ) : (
+        <IconAlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" />
+      )}
       <p className="flex-1">{props.message}</p>
       <button
         type="button"

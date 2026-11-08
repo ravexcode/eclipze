@@ -1,4 +1,4 @@
-import type { SessionUser } from "@/types/user";
+import type { SessionUser, UserProfile } from "@/types/user";
 import { apiFetch } from "@/utils/api-fetch";
 import { clearPrivateCaches } from "@/utils/cache";
 
@@ -22,6 +22,21 @@ async function requestSessionUser() {
 
   const data = await response.json() as SessionResponse;
   return data.user;
+}
+
+export function getCachedSessionUser() {
+  return cachedUser;
+}
+
+export function toUserProfile(sessionUser: SessionUser): UserProfile {
+  return {
+    name: sessionUser.displayName,
+    avatar: sessionUser.avatarUrl ?? "/logo.svg",
+    email: sessionUser.email,
+    id: sessionUser.id,
+    role: sessionUser.role,
+    plan: sessionUser.plan,
+  };
 }
 
 export function getSessionUser() {
