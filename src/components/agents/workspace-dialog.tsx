@@ -19,7 +19,7 @@ type CreditBalance = {
   reservedCredits: number;
 };
 
-const ACTION_LINK_CLASSES = "group flex items-center gap-3 rounded-md px-2.5 py-2.5 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent";
+const ACTION_LINK_CLASSES = "group flex items-center gap-3 rounded-md px-2.5 py-2.5 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent";
 
 export default function WorkspaceDialog() {
   const [isOpen, setIsOpen] = useState(false);

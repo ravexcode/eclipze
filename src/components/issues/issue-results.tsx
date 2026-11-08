@@ -88,7 +88,7 @@ export default function IssueResults({
               type="button"
               onClick={() => onOpenIssue(item.id)}
               onContextMenu={(event) => openContextMenu(event, item)}
-              className="flex w-full flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4 text-left transition-colors hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent md:flex-row md:items-center md:justify-between">
+              className="flex w-full flex-col gap-3 rounded-md border border-background-focus bg-background-card p-4 text-left transition-colors hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-accent md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium">{item.title}</span>

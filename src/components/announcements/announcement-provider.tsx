@@ -74,7 +74,7 @@ function AnnouncementToast({
       <p className="min-w-0 flex-1 leading-6">{announcement.message}</p>
       <button
         type="button"
-        className="-mr-1 -mt-1 shrink-0 rounded-md p-1 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground focus-visible:outline-1 focus-visible:outline-accent"
+        className="-mr-1 -mt-1 shrink-0 rounded-md p-1 text-foreground-off transition-colors hover:bg-background-focus hover:text-foreground"
         onClick={() => onDismiss(announcement.id)}
         aria-label="Dismiss announcement"
       >

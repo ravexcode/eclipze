@@ -31,7 +31,7 @@ export default function LegalDocument({
   return (
     <main lang="en" className="min-h-dvh bg-background px-5 pb-16 pt-6 sm:px-8 sm:pt-10">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6 border-b border-background-focus pb-5">
-        <Link href="/" aria-label="Eclipze home" className="shrink-0 rounded-md focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+        <Link href="/" aria-label="Eclipze home" className="shrink-0 rounded-md focus-visible:ring-1 focus-visible:ring-accent">
           <Image src="/logo.svg" alt="Eclipze" width={28} height={28} />
         </Link>
 

@@ -25,7 +25,7 @@ export default function Input(props: Props) {
   const [visible, setVisible] = useState(false);
   const inputId = useId();
 
-  const inputClass = "h-10 w-full rounded-md border border-background-focus bg-background-card px-2.5 text-xs text-foreground outline-hidden transition-colors placeholder:text-foreground-off/70 focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50";
+  const inputClass = "h-10 w-full rounded-md border border-background-focus bg-background-card px-2.5 text-xs text-foreground transition-colors placeholder:text-foreground-off/70 focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <div
@@ -55,7 +55,7 @@ export default function Input(props: Props) {
             type="button"
             onClick={() => setVisible(!visible)}
             aria-label={visible ? "Hide password" : "Show password"}
-            className="absolute bottom-1.5 right-2.5 rounded-md p-0.5 text-foreground-off outline-hidden transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent">
+            className="absolute bottom-1.5 right-2.5 rounded-md p-0.5 text-foreground-off transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent">
             {
               visible ?
                 <IconEyeOff

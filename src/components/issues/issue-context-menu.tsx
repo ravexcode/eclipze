@@ -104,7 +104,7 @@ export default function IssueContextMenu({
         role="menuitem"
         tabIndex={-1}
         onClick={() => chooseItem(onEdit)}
-        className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs hover:bg-background-focus focus-visible:outline-2 focus-visible:outline-accent">
+        className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs hover:bg-background-focus">
         <IconPencil size={14} />
         Edit issue
       </button>
@@ -113,7 +113,7 @@ export default function IssueContextMenu({
         role="menuitem"
         tabIndex={-1}
         onClick={() => chooseItem(onDelete)}
-        className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs text-alert-red hover:bg-background-focus focus-visible:outline-2 focus-visible:outline-accent">
+        className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-xs text-alert-red hover:bg-background-focus">
         <IconTrash size={14} />
         Delete issue
       </button>

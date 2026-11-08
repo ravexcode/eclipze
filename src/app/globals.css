@@ -100,8 +100,15 @@ body {
   animation: backdrop-exit 150ms ease-in both;
 }
 
-*:focus {
-  outline: none;
+@layer base {
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-foreground) 70%, transparent);
+    outline-offset: 2px;
+  }
 }
 
 @theme {

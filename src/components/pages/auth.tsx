@@ -158,7 +158,7 @@ export default function AuthPage(
     <div
       className="relative flex min-h-dvh w-full items-center justify-center px-5 py-16">
       <Link
-        className="absolute left-5 top-5 flex items-center justify-center gap-1 rounded-md px-3 py-1.5 text-foreground-off hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent sm:left-8 sm:top-8 text-xs transition-colors duration-200"
+        className="absolute left-5 top-5 flex items-center justify-center gap-1 rounded-md px-3 py-1.5 text-foreground-off hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent sm:left-8 sm:top-8 text-xs transition-colors duration-200"
         href="/">
         <IconArrowLeft
           size={17} />

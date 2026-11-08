@@ -43,6 +43,7 @@ export default function IssuesPage() {
   const [editForm, setEditForm] = useState<IssueFormValues>(initialIssueForm);
   const sessionUserId = useRef<string | null>(null);
   const pendingDeletes = useRef(new Set<string>());
+  const deletedIssueIds = useRef(new Set<string>());
   const hasLoadedIssues = useRef(false);
   const { snackbar, showSnackbar, dismissSnackbar } = useSnackbar();
 
@@ -51,6 +52,7 @@ export default function IssuesPage() {
     setUnread(0);
     setRole("USER");
     sessionUserId.current = null;
+    deletedIssueIds.current.clear();
     hasLoadedIssues.current = false;
     setShowForm(false);
     setEditingIssue(null);
@@ -83,7 +85,10 @@ export default function IssuesPage() {
       const data = await issueResponse.json() as { issues: IssueItem[] };
       const notifications = await notificationResponse.json() as { unread: number };
       if (signal.aborted) return;
-      const visibleIssues = data.issues.filter((issue) => !pendingDeletes.current.has(issue.id));
+      const visibleIssues = data.issues.filter((issue) => (
+        !pendingDeletes.current.has(issue.id)
+        && !deletedIssueIds.current.has(issue.id)
+      ));
       setIssues(visibleIssues);
       setUnread(notifications.unread);
       IssuesCache.update(sessionUser.id, sessionUser.role, visibleIssues, notifications.unread, "all-issues");
@@ -147,6 +152,7 @@ export default function IssuesPage() {
     const deletingUserId = sessionUserId.current;
     pendingDeletes.current.add(issue.id);
     setIssues((currentIssues) => currentIssues.filter((currentIssue) => currentIssue.id !== issue.id));
+    let deletionCommitted = false;
 
     try {
       const response = await apiFetch(
@@ -173,22 +179,32 @@ export default function IssuesPage() {
         return;
       }
 
+      deletionCommitted = true;
+      deletedIssueIds.current.add(issue.id);
       pendingDeletes.current.delete(issue.id);
       if (deletingUserId) {
         IssuesCache.removeIssue(deletingUserId, issue.id);
       }
+
+      try {
+        await load(true);
+      } finally {
+        deletedIssueIds.current.delete(issue.id);
+      }
     } catch (deleteError) {
       pendingDeletes.current.delete(issue.id);
-      setIssues((currentIssues) => {
-        if (currentIssues.some((currentIssue) => currentIssue.id === issue.id)) {
-          return currentIssues;
-        }
+      if (!deletionCommitted) {
+        setIssues((currentIssues) => {
+          if (currentIssues.some((currentIssue) => currentIssue.id === issue.id)) {
+            return currentIssues;
+          }
 
-        const restoredIssues = [...currentIssues];
-        const insertionIndex = Math.min(issueIndex, restoredIssues.length);
-        restoredIssues.splice(insertionIndex, 0, issue);
-        return restoredIssues;
-      });
+          const restoredIssues = [...currentIssues];
+          const insertionIndex = Math.min(issueIndex, restoredIssues.length);
+          restoredIssues.splice(insertionIndex, 0, issue);
+          return restoredIssues;
+        });
+      }
 
       if (isConnectionError(deleteError)) {
         showSnackbar(CONNECTION_ERROR_MESSAGE);

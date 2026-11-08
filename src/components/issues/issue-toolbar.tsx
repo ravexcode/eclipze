@@ -35,7 +35,7 @@ export default function IssueToolbar({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="rounded-md bg-background-card p-2 text-foreground-off hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50"
+          className="rounded-md bg-background-card p-2 text-foreground-off hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50"
           aria-label="Refresh issues"
           title="Refresh from server">
           <IconRefresh size={17} />
@@ -44,7 +44,7 @@ export default function IssueToolbar({
         <button
           type="button"
           onClick={onCreateIssue}
-          className="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-xs transition-colors hover:bg-accent-strong focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+          className="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-xs transition-colors hover:bg-accent-strong focus-visible:ring-1 focus-visible:ring-accent">
           <IconPlus size={16} /> New issue
         </button>
       </div>

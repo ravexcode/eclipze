@@ -27,7 +27,7 @@ export default function SettingsRow(props: SettingsRowProps) {
     : "";
 
   const interactiveClassName = isInteractive
-    ? "cursor-pointer focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent"
+    ? "cursor-pointer focus-visible:ring-1 focus-visible:ring-accent"
     : "";
 
   const className = [

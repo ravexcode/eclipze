@@ -76,7 +76,7 @@ export default function OverviewDashboard({
               <button
                 type="button"
                 onClick={onOpenInbox}
-                className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                className="inline-flex items-center gap-1 text-xs text-foreground-off transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent">
                 Open all
                 <IconArrowUpRight size={14} strokeWidth={1.8} />
               </button>
@@ -91,7 +91,7 @@ export default function OverviewDashboard({
                     key={mail.id}
                     type="button"
                     onClick={onOpenInbox}
-                    className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
+                    className="flex min-h-9 items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-accent">
                     <span
                       aria-hidden="true"
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${mail.readAt ? "bg-background-focus" : "bg-foreground"}`}
