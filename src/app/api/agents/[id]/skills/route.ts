@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { getWorkspaceSkill } from "@/lib/agent-skills";
 import prisma from "@/lib/prisma";
 import { badRequest, notFound, parseBody } from "@/lib/workspace-api";
@@ -14,6 +15,7 @@ export async function GET(request: Request, context: RouteContext) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const { id } = await context.params;
   const agent = await prisma.agent.findFirst({
@@ -34,6 +36,7 @@ export async function PUT(request: Request, context: RouteContext) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const { id } = await context.params;
   const agent = await prisma.agent.findFirst({ where: { id, userId: user.id }, select: { id: true } });

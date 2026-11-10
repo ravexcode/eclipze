@@ -69,3 +69,8 @@ export const ISSUE_TYPE_FILTER_OPTIONS: MenuSelectorOption<"ALL" | IssueType>[] 
   { value: "ALL", label: "All types" },
   ...ISSUE_TYPE_OPTIONS,
 ];
+
+export const ISSUE_PRIORITY_FILTER_OPTIONS: MenuSelectorOption<"ALL" | IssuePriority>[] = [
+  { value: "ALL", label: "All priorities" },
+  ...ISSUE_PRIORITY_OPTIONS,
+];

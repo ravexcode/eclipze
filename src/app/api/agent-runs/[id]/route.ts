@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { serializeAgentRun } from "@/lib/agent-runs";
 import prisma from "@/lib/prisma";
 import { notFound } from "@/lib/workspace-api";
@@ -14,6 +15,7 @@ export async function GET(request: Request, context: RouteContext) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const { id } = await context.params;
   const run = await prisma.agentRun.findFirst({

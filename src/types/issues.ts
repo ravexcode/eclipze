@@ -7,6 +7,7 @@ export type IssueItem = {
   type: IssueType;
   priority: IssuePriority;
   status: IssueStatus;
+  boardPosition: number;
   lastActivityAt: string;
   createdAt: string;
   requester?: {

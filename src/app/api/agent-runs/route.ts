@@ -4,6 +4,7 @@ import { after, NextResponse } from "next/server";
 
 import { encryptContent } from "@/lib/content-encryption";
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import {
   appendRunEvent,
   serializeAgentRun,
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401, headers: PRIVATE_NO_STORE_HEADERS });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const projectId = new URL(request.url).searchParams.get("projectId")?.trim();
   const runs = await prisma.agentRun.findMany({
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401, headers: PRIVATE_NO_STORE_HEADERS });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const body = await parseBody(request);
 

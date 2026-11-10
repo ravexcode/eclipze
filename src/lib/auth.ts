@@ -562,3 +562,14 @@ export async function requireAuthenticatedUser() {
 
   return user;
 }
+
+/** Guards workspace sections that only the Developer role can open. */
+export async function requireDeveloperUser() {
+  const user = await requireAuthenticatedUser();
+
+  if (user.role !== "DEVELOPER") {
+    redirect("/not-authorized");
+  }
+
+  return user;
+}

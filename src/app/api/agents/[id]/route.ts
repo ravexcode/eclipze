@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { badRequest, enumString, notFound, parseBody, requiredString } from "@/lib/workspace-api";
 import { serializeAgent } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
@@ -15,6 +16,7 @@ async function findAgent(userId: string, id: string) {
 export async function GET(_request: Request, context: Context) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
   const { id } = await context.params;
   const agent = await findAgent(user.id, id);
   if (!agent) return notFound("Agent not found.");
@@ -24,6 +26,7 @@ export async function GET(_request: Request, context: Context) {
 export async function PATCH(request: Request, context: Context) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
   const { id } = await context.params;
   if (!(await findAgent(user.id, id))) return notFound("Agent not found.");
   const body = await parseBody(request);
@@ -51,6 +54,7 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
   const { id } = await context.params;
   if (!(await findAgent(user.id, id))) return notFound("Agent not found.");
   await prisma.agent.delete({ where: { id } });

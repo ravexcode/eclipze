@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { badRequest, enumString, notFound, optionalString, ownedAgent, ownedProject, parseBody, requiredString } from "@/lib/workspace-api";
 import { serializeAgentSession } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
@@ -10,6 +11,7 @@ const STATUSES = ["ACTIVE", "COMPLETED", "FAILED", "CANCELLED"] as const;
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
   const sessions = await prisma.agentSession.findMany({ where: { userId: user.id }, orderBy: { startedAt: "desc" } });
   return NextResponse.json({ agentSessions: sessions.map(serializeAgentSession) });
 }
@@ -17,6 +19,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
   const body = await parseBody(request);
   if (!body) return badRequest("Invalid JSON body.");
   const agentId = requiredString(body.agentId, "agentId");

@@ -27,3 +27,5 @@ export const ISSUE_RESULTS_TITLE_BAR_WIDTHS = [
   "w-48",
   "w-36",
 ];
+
+export const BOARD_SKELETON_COLUMN_CARD_COUNTS = [3, 2, 1, 2];

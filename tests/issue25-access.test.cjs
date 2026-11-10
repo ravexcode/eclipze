@@ -65,6 +65,12 @@ function makeHarness({ user, issues = [] }) {
       state.calls.push(["issue.findFirst", where]);
       return state.issues.find(issue => matchesWhere(issue, where)) ?? null;
     },
+    aggregate: async ({ where } = {}) => {
+      const positions = state.issues
+        .filter(issue => !where?.status || issue.status === where.status)
+        .map(issue => issue.boardPosition ?? 0);
+      return { _min: { boardPosition: positions.length ? Math.min(...positions) : null } };
+    },
     create: async ({ data }) => {
       const issue = makeIssue({ id: "created-issue", userId: data.userId, projectId: data.projectId });
       Object.assign(issue, data);

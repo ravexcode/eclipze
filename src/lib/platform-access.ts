@@ -9,3 +9,11 @@ export async function denyPlatformAdministration() {
     { status: user ? 403 : 401 },
   );
 }
+
+/** Response for workspace tools that only the Developer role can use. */
+export function developerRoleRequired() {
+  return NextResponse.json(
+    { message: "This feature requires the Developer role." },
+    { status: 403 },
+  );
+}

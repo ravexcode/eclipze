@@ -5,6 +5,7 @@ import { badRequest, enumString, notFound, optionalString, ownedProject, parseBo
 import { serializeIssue } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
 import { getIssueAccessFilter } from "@/lib/issue-access";
+import { getTopBoardPosition } from "@/lib/issue-board";
 
 const TYPES = ["BUG", "FEATURE", "SUPPORT"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       description: description.value,
       type: type.value,
       priority: priority.value,
+      boardPosition: await getTopBoardPosition("OPEN"),
       lastActivityAt: new Date(),
     },
   });
