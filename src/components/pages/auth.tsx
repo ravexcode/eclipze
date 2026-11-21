@@ -55,11 +55,6 @@ export default function AuthPage(
 
     try {
       if (step === "credentials") {
-        if (type === "up") {
-          setError("You must accept the terms and privacy policy to create an account.");
-          return;
-        }
-
         const endpoint = type === "in" ? "/api/auth/signin" : "/api/auth/signup";
         const response = await apiFetch(endpoint, {
           method: "POST",
