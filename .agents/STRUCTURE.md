@@ -19,7 +19,8 @@ Available protected sections:
 - `/dashboard`
 - `/issues`
 - `/mails`
-- `/agents`
+- `/agents` (Developer role only)
+- `/board` (Developer role only)
 - `/projects`
 
 Authentication is implemented in `src/lib/auth.ts` using:
@@ -286,8 +287,21 @@ Variants:
 `UserRole` is `USER` (shown as **Client**) or `DEVELOPER`. Users switch between them in Settings (`PUT /api/account/role`) or with `pnpm developer:promote <email>` / `pnpm developer:demote <email>`.
 
 - Developer adds workspace tools: issue status and priority triage in the user's own projects, and the ERD editor on paid plans.
+- Developer-only sections are Agents, Board, and ERD. The sidebar hides them from Clients (`developerOnly` in `src/constants/components/sidebar-labels.tsx`), their layouts call `requireDeveloperUser()`, and their API routes answer 403 through `developerRoleRequired()`.
 - No role grants internal access, logs, or access to other accounts. Issue queries stay scoped by `getIssueAccessFilter`.
 - The internal `DEVELOPER` plan is unrelated to the role.
+
+---
+
+## Board
+
+`/board` is a kanban view of the issues the user can access. Columns are the issue statuses.
+
+- Drag and drop uses `@dnd-kit/core` and `@dnd-kit/sortable` (`src/components/board/board-canvas.tsx`).
+- `Issue.boardPosition` stores the manual order inside a column; lower values show first. The order is shared by everyone who can see the issue.
+- `PUT /api/issues/board` (`{ issueId, status, orderedIds }`) moves an issue and rewrites the positions of its column in one transaction. A status change notifies the issue recipients; a reorder inside the same column does not.
+- New issues, and issues whose status changes outside the board, enter their column at the top (`getTopBoardPosition` in `src/lib/issue-board.ts`).
+- Data loading and saving live in `src/utils/use-board.ts`.
 
 ---
 

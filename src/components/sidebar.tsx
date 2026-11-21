@@ -53,16 +53,22 @@ export default function Sidebar(props: Props) {
 
   // Constants
   const labels_data = labels(props.selected);
+  const is_developer = props.user?.role === "DEVELOPER";
 
   const filtered_labels = useMemo(() => {
     const normalized_query = search_query.trim().toLowerCase();
 
-    if (!normalized_query) return labels_data;
+    // Developer-only sections stay hidden from the Client role.
+    const visible_labels = labels_data.filter((label) =>
+      label.developerOnly !== true || is_developer
+    );
 
-    return labels_data.filter((label) =>
+    if (!normalized_query) return visible_labels;
+
+    return visible_labels.filter((label) =>
       label.label.toLowerCase().includes(normalized_query)
     );
-  }, [labels_data, search_query]);
+  }, [is_developer, labels_data, search_query]);
 
   //⌘K key listener
   useEffect(() => {

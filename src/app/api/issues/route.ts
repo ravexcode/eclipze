@@ -5,9 +5,11 @@ import { badRequest, enumString, notFound, optionalString, ownedProject, parseBo
 import { serializeIssue } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
 import { getIssueAccessFilter } from "@/lib/issue-access";
+import { getTopBoardPosition } from "@/lib/issue-board";
 
 const TYPES = ["BUG", "FEATURE", "SUPPORT"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
+const STATUSES = ["OPEN", "IN_PROGRESS", "WAITING_FOR_USER", "RESOLVED", "CLOSED"] as const;
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -36,6 +38,9 @@ export async function POST(request: Request) {
   if (type.error) return type.error;
   const priority = enumString(body.priority, PRIORITIES, "priority", "MEDIUM");
   if (priority.error) return priority.error;
+  // The board creates issues straight into the column the user picked.
+  const status = enumString(body.status, STATUSES, "status", "OPEN");
+  if (status.error) return status.error;
   const projectId = optionalString(body.projectId, "projectId");
   if (projectId.error) return projectId.error;
   if (projectId.value && !(await ownedProject(user.id, projectId.value))) return notFound("Project not found.");
@@ -47,6 +52,10 @@ export async function POST(request: Request) {
       description: description.value,
       type: type.value,
       priority: priority.value,
+      status: status.value,
+      resolvedAt: status.value === "RESOLVED" ? new Date() : null,
+      closedAt: status.value === "CLOSED" ? new Date() : null,
+      boardPosition: await getTopBoardPosition(status.value),
       lastActivityAt: new Date(),
     },
   });

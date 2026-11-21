@@ -3,11 +3,12 @@ import {
   IconFolders,
   IconInbox,
   IconLayoutDashboard,
+  IconLayoutKanban,
   IconPointer2,
   IconTarget
 } from "@tabler/icons-react";
 
-export type SelectedSection = "overview" | "inbox" | "issues" | "agents" | "projects" | "settings" | "erd" | "billing";
+export type SelectedSection = "overview" | "inbox" | "issues" | "agents" | "projects" | "settings" | "erd" | "billing" | "board";
 
 const icon_size = 20; const icon_width = 1.5;
 
@@ -32,6 +33,13 @@ export const labels = (selected: SelectedSection) => {
       selected: selected === "issues"
     },
     {
+      label: "Board",
+      icon: <IconLayoutKanban size={icon_size} strokeWidth={icon_width} />,
+      redirection: "/board",
+      selected: selected === "board",
+      developerOnly: true,
+    },
+    {
       label: "Projects",
       icon: <IconFolders size={icon_size} strokeWidth={icon_width} />,
       redirection: "/projects",
@@ -41,7 +49,8 @@ export const labels = (selected: SelectedSection) => {
       label: "Agents",
       icon: <IconPointer2 size={icon_size} strokeWidth={icon_width} />,
       redirection: "/agents",
-      selected: selected === "agents"
+      selected: selected === "agents",
+      developerOnly: true,
     },
     {
       label: "ERD",
@@ -49,6 +58,7 @@ export const labels = (selected: SelectedSection) => {
       redirection: "/erd",
       selected: selected === "erd",
       isPremium: true,
+      developerOnly: true,
     },
   ];
 

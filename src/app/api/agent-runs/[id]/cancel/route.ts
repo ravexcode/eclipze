@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { cancelAgentRun, serializeAgentRun } from "@/lib/agent-runs";
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { notFound } from "@/lib/workspace-api";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -13,6 +14,7 @@ export async function POST(request: Request, context: RouteContext) {
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const { id } = await context.params;
   const run = await cancelAgentRun(id, user.id);

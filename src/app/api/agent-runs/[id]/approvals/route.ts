@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { appendRunEvent } from "@/lib/agent-runs";
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import prisma from "@/lib/prisma";
 
 const PRIVATE_NO_STORE_HEADERS = {
@@ -11,6 +12,7 @@ const PRIVATE_NO_STORE_HEADERS = {
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401, headers: PRIVATE_NO_STORE_HEADERS });
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const { id: runId } = await context.params;
   const body = await request.json().catch(() => null) as { approvalId?: unknown; approved?: unknown } | null;

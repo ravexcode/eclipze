@@ -5,6 +5,7 @@ import { badRequest, enumString, notFound, optionalString, parseBody, requiredSt
 import { serializeIssue } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
 import { getIssueAccessFilter, getIssueRecipientIds } from "@/lib/issue-access";
+import { getTopBoardPosition } from "@/lib/issue-board";
 import { decryptContent } from "@/lib/content-encryption";
 
 const TYPES = ["BUG", "FEATURE", "SUPPORT"] as const;
@@ -79,6 +80,11 @@ export async function PATCH(request: Request, context: Context) {
       data.status = status.value;
       data.resolvedAt = status.value === "RESOLVED" ? new Date() : null;
       data.closedAt = status.value === "CLOSED" ? new Date() : null;
+
+      // An issue that changes status enters its new board column at the top.
+      if (status.value !== issue.status) {
+        data.boardPosition = await getTopBoardPosition(status.value);
+      }
     }
   } else if (body.priority !== undefined || body.status !== undefined) {
     return NextResponse.json({

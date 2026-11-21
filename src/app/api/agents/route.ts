@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
+import { developerRoleRequired } from "@/lib/platform-access";
 import { badRequest, enumString, requiredString } from "@/lib/workspace-api";
 import { serializeAgent } from "@/lib/workspace";
 import prisma from "@/lib/prisma";
@@ -13,6 +14,7 @@ export async function GET() {
     { message: "Unauthorized" },
     { status: 401 }
   );
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const agents = await prisma.agent.findMany(
     {
@@ -32,6 +34,7 @@ export async function POST(request: Request) {
     { message: "Unauthorized" },
     { status: 401 },
   );
+  if (user.role !== "DEVELOPER") return developerRoleRequired();
 
   const body = await request.json()
     .catch(
