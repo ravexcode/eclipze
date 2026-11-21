@@ -30,53 +30,26 @@ export default async function HomePage() {
         </div>
 
         <div
-          className="relative flex max-w-180 flex-col items-center gap-1.5 px-4 text-center animate-fade-in-up">
+          className="relative flex max-w-300 flex-col items-center gap-1.5 px-4 text-center animate-fade-in-up">
           <h1
             className="bg-linear-to-r from-foreground-off via-foreground to-foreground bg-clip-text pb-1 font-heading text-4xl font-bold tracking-[-0.01em] text-transparent animate-blurred-fade-in sm:text-5xl md:text-[64px]">
             Build beyond limits
           </h1>
           <p
-            className="max-w-135 font-heading text-sm italic tracking-[-0.01em] text-foreground sm:text-base">
+            className="max-w-135 font-heading text-lg italic tracking-[-0.01em] text-foreground sm:text-base">
             Empower your teams to move faster, execute smarter, and scale without limits.
           </p>
         </div>
       </section>
 
       <section
-        className="mx-auto flex w-full max-w-310 items-center justify-center px-5 py-20">
+        className="mx-auto flex w-full max-w-300 items-center justify-center px-5 py-20 my-50">
         <RevealOnView
-          className="w-full max-w-200"
+          className="w-full"
           enterThreshold={0.2}
           exitThreshold={0.2}
           animation="animate-fade-in-up">
           <Showcase />
-        </RevealOnView>
-      </section>
-
-      <section
-        className="mx-auto flex w-full max-w-310 flex-col items-center gap-10 px-5 py-20 md:flex-row md:px-2.5">
-        <RevealOnView
-          className="w-full md:w-95 md:shrink-0"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <h2
-            className="font-heading text-3xl font-medium leading-tight tracking-[-0.06em] md:text-4xl md:leading-[1.3]">
-            Improve better <span className="text-brand">communication</span> in your projects
-          </h2>
-        </RevealOnView>
-
-        <RevealOnView
-          className="w-full min-w-0 flex-1"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-fade-in-up">
-          <Image
-            src="/images/inbox.webp"
-            className="w-full"
-            alt="Eclipze inbox with a message open"
-            width={1600}
-            height={806} />
         </RevealOnView>
       </section>
     </MarketingLayout>
