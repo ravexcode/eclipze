@@ -31,7 +31,7 @@ export default function Header({ hasToken = false }: { hasToken?: boolean }) {
 
   return (
     <header
-      className="sticky top-2.5 z-100 mx-auto grid w-[calc(100%-2.5rem)] max-w-310 grid-cols-[1fr_auto_1fr] items-center rounded-lg px-4 py-3 backdrop-blur-sm backdrop-brightness-60 animate-fade-in-down duration-200">
+      className="fixed inset-x-0 top-0 z-100 grid w-full grid-cols-[1fr_auto_1fr] items-center px-5 py-3 backdrop-blur-sm backdrop-brightness-60 animate-fade-in-down duration-200 sm:px-9">
       <Link
         href="/"
         aria-label="Eclipze home"

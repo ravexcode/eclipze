@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import MarketingLayout from "@/components/layouts/marketing";
+import Showcase from "@/components/marketing/showcase";
 import RevealOnView from "@/components/ui/reveal-on-view";
 
 import { getCurrentSession } from "@/lib/auth";
@@ -15,14 +16,18 @@ export default async function HomePage() {
   return (
     <MarketingLayout hasToken={hasToken}>
       <section
-        className="relative mx-auto mt-4 flex aspect-[1240/653] min-h-105 w-[calc(100%-2.5rem)] max-w-310 items-center justify-center overflow-hidden">
-        <Image
-          src="/marketing.webp"
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 1280px) 100vw, 1240px"
-          className="object-cover animate-fade-in" />
+        className="relative flex h-dvh min-h-120 w-full items-center justify-center overflow-hidden">
+        {/* Opacity lives on the wrapper: animate-fade-in ends at opacity 1. */}
+        <div
+          className="absolute inset-0 opacity-80">
+          <Image
+            src="/marketing.webp"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover animate-fade-in" />
+        </div>
 
         <div
           className="relative flex max-w-180 flex-col items-center gap-1.5 px-4 text-center animate-fade-in-up">
@@ -44,16 +49,7 @@ export default async function HomePage() {
           enterThreshold={0.2}
           exitThreshold={0.2}
           animation="animate-fade-in-up">
-          <video
-            src="/showcase.mp4"
-            poster="/images/marketing_dashboard.webp"
-            className="aspect-[800/441] w-full rounded-sm bg-background-card object-cover"
-            aria-label="Eclipze dashboard walkthrough"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata" />
+          <Showcase />
         </RevealOnView>
       </section>
 

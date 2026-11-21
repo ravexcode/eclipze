@@ -8,7 +8,7 @@ type MarketingLayoutProps = {
 export default function MarketingLayout({ children, hasToken = false }: MarketingLayoutProps) {
   return (
     <div
-      className="relative flex min-h-dvh w-full flex-col text-foreground pt-2.5 pb-10">
+      className="relative flex min-h-dvh w-full flex-col text-foreground pb-10">
       <Header hasToken={hasToken} />
       <main
         className="flex w-full min-w-0 flex-1 flex-col z-2">
