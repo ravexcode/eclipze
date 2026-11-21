@@ -14,110 +14,73 @@ export default async function HomePage() {
 
   return (
     <MarketingLayout hasToken={hasToken}>
-      <Image
-        src="/images/background.webp"
-        alt="Landing background"
-        width={1672}
-        height={941}
-        loading="eager"
-        className="absolute top-0 left-0 w-full h-max bg-cover contrast-125 brightness-75 animate-fade-in" />
+      <section
+        className="relative mx-auto mt-4 flex aspect-[1240/653] min-h-105 w-[calc(100%-2.5rem)] max-w-310 items-center justify-center overflow-hidden">
+        <Image
+          src="/marketing.webp"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 1280px) 100vw, 1240px"
+          className="object-cover animate-fade-in" />
 
-      <section className="mx-auto w-full max-w-7xl overflow-hidden p-10 gap-10 flex flex-col items-center justify-between relative">
         <div
-          className="w-full animate-fade-in-up">
+          className="relative flex max-w-180 flex-col items-center gap-1.5 px-4 text-center animate-fade-in-up">
+          <h1
+            className="bg-linear-to-r from-foreground-off via-foreground to-foreground bg-clip-text pb-1 font-heading text-4xl font-bold tracking-[-0.01em] text-transparent animate-blurred-fade-in sm:text-5xl md:text-[64px]">
+            Build beyond limits
+          </h1>
           <p
-            className="w-full text-7xl text-center font-heading font-bold animate-blurred-fade-in">
-            The app built <br />
-            for your agents <br />
-            <span
-              className="text-accent">
-              Workflow
-            </span>
+            className="max-w-135 font-heading text-sm italic tracking-[-0.01em] text-foreground sm:text-base">
+            Empower your teams to move faster, execute smarter, and scale without limits.
           </p>
         </div>
-
-        <Image
-          src="/images/marketing_dashboard.webp"
-          className="w-full rounded-md animate-fade-in-up animate-duration-700"
-          alt="Marketing dashboard"
-          width={1336}
-          height={910}
-          loading="eager" />
       </section>
 
       <section
-        className="flex flex-col items-center justify-center gap-2 p-10 w-full max-w-6xl mx-auto mt-50 animate-fade-in-up">
+        className="mx-auto flex w-full max-w-310 items-center justify-center px-5 py-20">
         <RevealOnView
-          className="w-full"
+          className="w-full max-w-200"
           enterThreshold={0.2}
           exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="text-3xl font-sembibold w-full text-start">
-            Work with Agents
-          </p>
-        </RevealOnView>
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="w-full font-medium text-start text-base mb-10 text-foreground-off">
-            Add skills, projects, Github repositories for context. And create issues, fix them, check your inbox and even MCP connections.
-          </p>
-        </RevealOnView>
-
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <Image
-            src="/images/agents.webp"
-            className="w-full rounded-md animate-fade-in-up animate-duration-700"
-            alt="Marketing agents page"
-            width={1336}
-            height={910}
-            loading="eager" />
+          animation="animate-fade-in-up">
+          <video
+            src="/showcase.mp4"
+            poster="/images/marketing_dashboard.webp"
+            className="aspect-[800/441] w-full rounded-sm bg-background-card object-cover"
+            aria-label="Eclipze dashboard walkthrough"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata" />
         </RevealOnView>
       </section>
 
       <section
-        className="flex flex-col items-center justify-center gap-2 p-10 w-full max-w-6xl mx-auto animate-fade-in-up">
+        className="mx-auto flex w-full max-w-310 flex-col items-center gap-10 px-5 py-20 md:flex-row md:px-2.5">
         <RevealOnView
-          className="w-full"
+          className="w-full md:w-95 md:shrink-0"
           enterThreshold={0.2}
           exitThreshold={0.2}
           animation="animate-blurred-fade-in">
-          <p
-            className="text-3xl font-sembibold w-full text-start">
-            Organize your projects
-          </p>
-        </RevealOnView>
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="w-full font-medium text-start text-base mb-10 text-foreground-off">
-            Create, delete and edit your projects to work with them.
-          </p>
+          <h2
+            className="font-heading text-3xl font-medium leading-tight tracking-[-0.06em] md:text-4xl md:leading-[1.3]">
+            Improve better <span className="text-brand">communication</span> in your projects
+          </h2>
         </RevealOnView>
 
         <RevealOnView
-          className="w-full"
+          className="w-full min-w-0 flex-1"
           enterThreshold={0.2}
           exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
+          animation="animate-fade-in-up">
           <Image
-            src="/images/projects.webp"
-            className="w-full rounded-md animate-fade-in-up animate-duration-700"
-            alt="Marketing projects page"
-            width={1336}
-            height={910}
-            loading="eager" />
+            src="/images/inbox.webp"
+            className="w-full"
+            alt="Eclipze inbox with a message open"
+            width={1600}
+            height={806} />
         </RevealOnView>
       </section>
     </MarketingLayout>
