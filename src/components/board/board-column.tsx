@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight, IconPlus } from "@tabler/icons-react";
 import { useState, type MouseEvent, type TransitionEvent } from "react";
 
 import BoardCard from "@/components/board/board-card";
@@ -17,6 +17,7 @@ type BoardColumnProps = {
   collapsed: boolean;
   highlighted: boolean;
   onToggleCollapsed: (status: IssueStatus) => void;
+  onCreateIssue: (status: IssueStatus) => void;
   onOpenIssue: (issueId: string) => void;
   onIssueContextMenu: (event: MouseEvent<HTMLDivElement>, issue: IssueItem) => void;
 };
@@ -35,6 +36,7 @@ export default function BoardColumn({
   collapsed,
   highlighted,
   onToggleCollapsed,
+  onCreateIssue,
   onOpenIssue,
   onIssueContextMenu,
 }: BoardColumnProps) {
@@ -101,14 +103,25 @@ export default function BoardColumn({
             {countLabel}
           </span>
 
-          <button
-            type="button"
-            aria-expanded={true}
-            aria-label={`Collapse ${label} column`}
-            onClick={() => onToggleCollapsed(status)}
-            className={`ml-auto ${iconButtonClass}`}>
-            <IconChevronLeft size={15} />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              aria-label={`New issue in ${label}`}
+              title={`New issue in ${label}`}
+              onClick={() => onCreateIssue(status)}
+              className={iconButtonClass}>
+              <IconPlus size={15} />
+            </button>
+
+            <button
+              type="button"
+              aria-expanded={true}
+              aria-label={`Collapse ${label} column`}
+              onClick={() => onToggleCollapsed(status)}
+              className={iconButtonClass}>
+              <IconChevronLeft size={15} />
+            </button>
+          </div>
         </header>
 
         <div

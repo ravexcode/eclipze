@@ -47,6 +47,7 @@ type BoardCanvasProps = {
   filters: BoardFilters;
   collapsedColumns: IssueStatus[];
   onToggleCollapsed: (status: IssueStatus) => void;
+  onCreateIssue: (status: IssueStatus) => void;
   onDraggingChange: (dragging: boolean) => void;
   onMoveIssue: (move: BoardMove) => void;
   onOpenIssue: (issueId: string) => void;
@@ -59,6 +60,7 @@ export default function BoardCanvas({
   filters,
   collapsedColumns,
   onToggleCollapsed,
+  onCreateIssue,
   onDraggingChange,
   onMoveIssue,
   onOpenIssue,
@@ -238,6 +240,7 @@ export default function BoardCanvas({
               collapsed={collapsedColumns.includes(status)}
               highlighted={activeStatus === status}
               onToggleCollapsed={onToggleCollapsed}
+              onCreateIssue={onCreateIssue}
               onOpenIssue={onOpenIssue}
               onIssueContextMenu={openContextMenu}
             />

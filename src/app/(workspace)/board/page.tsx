@@ -10,10 +10,9 @@ import IssueForm from "@/components/issues/issue-form";
 import DashLayout from "@/components/layouts/dash";
 import BoardSkeleton from "@/components/skeletons/board/board-skeleton";
 import Dialog from "@/components/ui/dialog";
-import Heading from "@/components/ui/heading";
 import Snackbar from "@/components/ui/snackbar";
 import { initialBoardFilters } from "@/constants/board";
-import { initialIssueForm } from "@/constants/issues";
+import { initialIssueForm, statusLabels } from "@/constants/issues";
 import type { BoardFilters } from "@/types/board";
 import type { IssueFormValues, IssueItem } from "@/types/issues";
 import type { IssueStatus } from "@/types/user";
@@ -29,6 +28,8 @@ export default function BoardPage() {
   const [filters, setFilters] = useState<BoardFilters>(initialBoardFilters);
   const [collapsedColumns, setCollapsedColumns] = useState<IssueStatus[]>(readCollapsedColumns);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  // The column whose "New issue" button opened the form; kept while the dialog closes.
+  const [createStatus, setCreateStatus] = useState<IssueStatus>("OPEN");
   const [createForm, setCreateForm] = useState<IssueFormValues>(initialIssueForm);
   const [editingIssue, setEditingIssue] = useState<IssueItem | null>(null);
   const [editForm, setEditForm] = useState<IssueFormValues>(initialIssueForm);
@@ -45,10 +46,13 @@ export default function BoardPage() {
     writeCollapsedColumns(nextCollapsedColumns);
   };
 
-  const openCreateForm = () => {
+  const openCreateForm = (status: IssueStatus) => {
     setFormError(null);
+    setCreateStatus(status);
     setShowCreateForm(true);
   };
+
+  const closeCreateForm = () => setShowCreateForm(false);
 
   const openEditForm = (issue: IssueItem) => {
     setEditForm({
@@ -66,7 +70,7 @@ export default function BoardPage() {
     if (isSaving) return;
 
     setIsSaving(true);
-    const errorMessage = await board.createIssue(createForm);
+    const errorMessage = await board.createIssue(createForm, createStatus);
     setIsSaving(false);
 
     if (errorMessage) {
@@ -75,7 +79,7 @@ export default function BoardPage() {
     }
 
     setCreateForm({ ...initialIssueForm });
-    setShowCreateForm(false);
+    closeCreateForm();
   };
 
   const submitEditForm = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -99,8 +103,6 @@ export default function BoardPage() {
       current="board"
       router={router}>
       <main className="flex h-full w-full min-w-0 flex-col">
-        <Heading label="Board" />
-
         <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:p-6">
           <BoardToolbar
             filters={filters}
@@ -109,7 +111,6 @@ export default function BoardPage() {
               setFilters((previous) => ({ ...previous, ...updates }))
             }
             onRefresh={() => void board.reload(true)}
-            onCreateIssue={openCreateForm}
           />
 
           {board.error ? (
@@ -128,6 +129,7 @@ export default function BoardPage() {
               filters={filters}
               collapsedColumns={collapsedColumns}
               onToggleCollapsed={toggleCollapsedColumn}
+              onCreateIssue={openCreateForm}
               onDraggingChange={board.setDragging}
               onMoveIssue={(move) => void board.moveIssue(move)}
               onOpenIssue={(issueId) => router.push(`/issues/${issueId}`)}
@@ -140,10 +142,10 @@ export default function BoardPage() {
 
       <Dialog
         isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
+        onClose={closeCreateForm}
         size="lg"
         title="New issue"
-        description="New issues enter the board at the top of the Open column.">
+        description={`New issues enter the board at the top of the ${statusLabels[createStatus]} column.`}>
         <IssueForm
           form={createForm}
           error={formError}
@@ -151,7 +153,7 @@ export default function BoardPage() {
             setCreateForm((previous) => ({ ...previous, ...updates }))
           }
           onSubmit={submitCreateForm}
-          onCancel={() => setShowCreateForm(false)}
+          onCancel={closeCreateForm}
           submitLabel={isSaving ? "Saving..." : "Submit issue"}
         />
       </Dialog>

@@ -286,8 +286,8 @@ export function useBoard(showSnackbar: (message: string) => void) {
     }
   }, [reload, saveUnsavedMoves]);
 
-  const createIssue = useCallback((form: IssueFormValues) => (
-    saveIssue("/api/issues", "POST", form, "Unable to create issue.")
+  const createIssue = useCallback((form: IssueFormValues, status: IssueStatus) => (
+    saveIssue("/api/issues", "POST", { ...form, status }, "Unable to create issue.")
   ), [saveIssue]);
 
   const updateIssue = useCallback((issueId: string, form: IssueFormValues) => (
