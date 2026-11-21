@@ -15,6 +15,12 @@ export const BOARD_COLLAPSED_COLUMNS_STORAGE_KEY = "eclipze-board-collapsed-colu
 
 export const BOARD_ENDPOINT = "/api/issues/board";
 
+/** Quiet time, in milliseconds, after the last move before a personal board saves its changes. */
+export const BOARD_SAVE_DEBOUNCE_DELAY = 500;
+
+/** How often, in milliseconds, a shared board checks for changes made by other members. */
+export const BOARD_LIVE_SYNC_INTERVAL = 3000;
+
 export const initialBoardFilters: BoardFilters = {
   query: "",
   type: "ALL",

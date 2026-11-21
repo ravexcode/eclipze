@@ -1,11 +1,16 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { BOARD_ENDPOINT } from "@/constants/board";
+import {
+  BOARD_ENDPOINT,
+  BOARD_LIVE_SYNC_INTERVAL,
+  BOARD_SAVE_DEBOUNCE_DELAY,
+} from "@/constants/board";
 import { CONNECTION_ERROR_MESSAGE } from "@/constants/snackbar";
-import type { BoardMove } from "@/types/board";
+import type { BoardColumns, BoardColumnOrder, BoardMove, BoardState } from "@/types/board";
 import type { IssueFormValues, IssueItem } from "@/types/issues";
+import type { IssueStatus } from "@/types/user";
 import { apiFetch } from "@/utils/api-fetch";
 import { flattenBoardColumns, groupIssuesByStatus } from "@/utils/board";
 import { isConnectionError } from "@/utils/connection-error";
@@ -22,16 +27,45 @@ const KEEP_PRIVATE_CACHE = { invalidatePrivateCache: false };
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
-/** Loads the issues of the board and saves every change made on it. */
+const MOVE_ERROR_MESSAGE = "Unable to save the board.";
+
+/**
+ * Loads the issues of the board and saves every change made on it.
+ *
+ * Personal boards save moves together once the user stops moving cards for a moment.
+ * Collaborative boards (a project with more than one member) save each move at once
+ * and reload when another member changes the board.
+ */
 export function useBoard(showSnackbar: (message: string) => void) {
   const [issues, setIssues] = useState<IssueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [collaborative, setCollaborative] = useState(false);
+
   const hasLoadedIssues = useRef(false);
   const isDragging = useRef(false);
   const changeVersion = useRef(0);
+  const boardVersion = useRef<string | null>(null);
+  const isCollaborative = useRef(false);
+
+  // Moves not sent yet: the latest board on screen and the columns it changed.
+  const unsavedColumns = useRef<BoardColumns | null>(null);
+  const unsavedStatuses = useRef(new Set<IssueStatus>());
+  const saveTimer = useRef<number | null>(null);
+  const savesInFlight = useRef(0);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
   const columns = useMemo(() => groupIssuesByStatus(issues), [issues]);
+
+  const hasUnsavedMoves = useCallback(() => (
+    unsavedStatuses.current.size > 0 || savesInFlight.current > 0
+  ), []);
+
+  const applyBoardState = useCallback((state: BoardState) => {
+    isCollaborative.current = state.collaborative;
+    boardVersion.current = state.version;
+    setCollaborative(state.collaborative);
+  }, []);
 
   const clearBoard = useCallback(() => {
     setIssues([]);
@@ -51,20 +85,27 @@ export function useBoard(showSnackbar: (message: string) => void) {
         return;
       }
 
-      const response = await apiFetch("/api/issues", { signal });
-      if (!response.ok) {
+      const [issuesResponse, boardResponse] = await Promise.all([
+        apiFetch("/api/issues", { signal }),
+        apiFetch(BOARD_ENDPOINT, { signal }),
+      ]);
+      if (!issuesResponse.ok || !boardResponse.ok) {
         setError("Unable to load the board.");
         return;
       }
 
-      const data = await response.json() as { issues: IssueItem[] };
+      const [issuesData, boardState] = await Promise.all([
+        issuesResponse.json() as Promise<{ issues: IssueItem[] }>,
+        boardResponse.json() as Promise<BoardState>,
+      ]);
       if (signal.aborted) return;
 
       // A response that started before a drag or a save would undo what the user just did.
       const boardChangedMeanwhile = versionAtStart !== changeVersion.current;
-      if (isDragging.current || boardChangedMeanwhile) return;
+      if (isDragging.current || boardChangedMeanwhile || hasUnsavedMoves()) return;
 
-      setIssues(data.issues);
+      setIssues(issuesData.issues);
+      applyBoardState(boardState);
       hasLoadedIssues.current = true;
     } catch (loadError) {
       if (signal.aborted) return;
@@ -76,7 +117,7 @@ export function useBoard(showSnackbar: (message: string) => void) {
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [clearBoard, showSnackbar]);
+  }, [applyBoardState, clearBoard, hasUnsavedMoves, showSnackbar]);
 
   const reload = useIssueRefresh(refresh, clearBoard);
 
@@ -88,22 +129,11 @@ export function useBoard(showSnackbar: (message: string) => void) {
     showSnackbar(isConnectionError(requestError) ? CONNECTION_ERROR_MESSAGE : fallbackMessage);
   }, [showSnackbar]);
 
-  const moveIssue = useCallback(async (move: BoardMove) => {
-    const previousIssues = issues;
-    const orderedIds = move.columns[move.status].map((issue) => issue.id);
-
-    changeVersion.current += 1;
-    const versionOfMove = changeVersion.current;
-    setIssues(flattenBoardColumns(move.columns));
-
-    const restoreBoard = () => {
-      // A newer move already replaced this one on screen; reloading shows the saved state.
-      if (versionOfMove !== changeVersion.current) {
-        void reload(true);
-        return;
-      }
-      setIssues(previousIssues);
-    };
+  const sendColumnOrders = useCallback(async (
+    columnOrders: BoardColumnOrder[],
+    keepalive: boolean,
+  ) => {
+    savesInFlight.current += 1;
 
     try {
       const response = await apiFetch(
@@ -111,25 +141,116 @@ export function useBoard(showSnackbar: (message: string) => void) {
         {
           method: "PUT",
           headers: JSON_HEADERS,
-          body: JSON.stringify({
-            issueId: move.issueId,
-            status: move.status,
-            orderedIds,
-          }),
+          body: JSON.stringify({ columns: columnOrders }),
+          keepalive,
         },
         KEEP_PRIVATE_CACHE,
       );
 
       if (!response.ok) {
         const data = await response.json().catch(() => null) as ApiMessage;
-        restoreBoard();
-        showSnackbar(data?.message ?? "Unable to move the issue.");
+        showSnackbar(data?.message ?? MOVE_ERROR_MESSAGE);
+        return false;
       }
-    } catch (moveError) {
-      restoreBoard();
-      reportRequestError(moveError, "Unable to move the issue.");
+
+      const data = await response.json().catch(() => null) as { version?: string } | null;
+      if (data?.version) boardVersion.current = data.version;
+      return true;
+    } catch (saveError) {
+      reportRequestError(saveError, MOVE_ERROR_MESSAGE);
+      return false;
+    } finally {
+      savesInFlight.current -= 1;
     }
-  }, [issues, reload, reportRequestError, showSnackbar]);
+  }, [reportRequestError, showSnackbar]);
+
+  /** Sends every unsaved move in one request. Saves run one after another, in order. */
+  const saveUnsavedMoves = useCallback((keepalive = false) => {
+    if (saveTimer.current !== null) {
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
+    const boardToSave = unsavedColumns.current;
+    const statusesToSave = [...unsavedStatuses.current];
+    unsavedColumns.current = null;
+    unsavedStatuses.current.clear();
+
+    if (!boardToSave || statusesToSave.length === 0) return saveQueue.current;
+
+    const columnOrders = statusesToSave.map((status) => ({
+      status,
+      orderedIds: boardToSave[status].map((issue) => issue.id),
+    }));
+
+    saveQueue.current = saveQueue.current.then(async () => {
+      const saved = await sendColumnOrders(columnOrders, keepalive);
+
+      // The server keeps the last good state; showing it undoes the failed move.
+      if (!saved && !hasUnsavedMoves()) void reload(true);
+    });
+
+    return saveQueue.current;
+  }, [hasUnsavedMoves, reload, sendColumnOrders]);
+
+  const moveIssue = useCallback((move: BoardMove) => {
+    changeVersion.current += 1;
+    setIssues(flattenBoardColumns(move.columns));
+
+    unsavedColumns.current = move.columns;
+    unsavedStatuses.current.add(move.status);
+
+    if (isCollaborative.current) {
+      void saveUnsavedMoves();
+      return;
+    }
+
+    // Each new move restarts the wait, so fast moves are saved together.
+    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      saveTimer.current = null;
+      void saveUnsavedMoves();
+    }, BOARD_SAVE_DEBOUNCE_DELAY);
+  }, [saveUnsavedMoves]);
+
+  // Moves still waiting for the debounce are sent when the user leaves the page.
+  useEffect(() => {
+    const saveBeforeLeaving = () => void saveUnsavedMoves(true);
+
+    window.addEventListener("pagehide", saveBeforeLeaving);
+
+    return () => {
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+      saveBeforeLeaving();
+    };
+  }, [saveUnsavedMoves]);
+
+  // Shared boards check for changes made by other members and reload when there are any.
+  useEffect(() => {
+    if (!collaborative) return;
+
+    const checkForChanges = async () => {
+      const isBusy = isDragging.current || hasUnsavedMoves();
+      if (document.visibilityState !== "visible" || isBusy) return;
+
+      try {
+        const response = await apiFetch(BOARD_ENDPOINT);
+        if (!response.ok) return;
+
+        const state = await response.json() as BoardState;
+        if (state.version === boardVersion.current) return;
+        if (isDragging.current || hasUnsavedMoves()) return;
+
+        void reload(true);
+      } catch {
+        // A missed check is retried on the next interval.
+      }
+    };
+
+    const timer = window.setInterval(() => void checkForChanges(), BOARD_LIVE_SYNC_INTERVAL);
+
+    return () => window.clearInterval(timer);
+  }, [collaborative, hasUnsavedMoves, reload]);
 
   /** Sends a create or edit request. Returns an error message, or null when it is saved. */
   const saveIssue = useCallback(async (
@@ -138,6 +259,9 @@ export function useBoard(showSnackbar: (message: string) => void) {
     payload: unknown,
     fallbackMessage: string,
   ) => {
+    // Pending moves go first, so the reload after this save shows them.
+    await saveUnsavedMoves();
+
     try {
       const response = await apiFetch(
         url,
@@ -160,7 +284,7 @@ export function useBoard(showSnackbar: (message: string) => void) {
     } catch (saveError) {
       return isConnectionError(saveError) ? CONNECTION_ERROR_MESSAGE : fallbackMessage;
     }
-  }, [reload]);
+  }, [reload, saveUnsavedMoves]);
 
   const createIssue = useCallback((form: IssueFormValues) => (
     saveIssue("/api/issues", "POST", form, "Unable to create issue.")
@@ -205,6 +329,7 @@ export function useBoard(showSnackbar: (message: string) => void) {
     columns,
     loading,
     error,
+    collaborative,
     reload,
     setDragging,
     moveIssue,
