@@ -29,7 +29,7 @@ export default function AuthProviders() {
             <a
               key={href}
               href={href}
-              className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-background-focus bg-background-card text-base font-medium text-foreground transition-colors duration-200 hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-brand">
+              className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-background-focus bg-background-card text-base font-medium text-foreground transition-colors duration-200 hover:bg-background-focus focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
               <Icon
                 size={18}
                 stroke={1.75} />

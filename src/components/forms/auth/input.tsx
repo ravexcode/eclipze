@@ -41,7 +41,7 @@ export default function Input(props: Props) {
   // 44px tall (Apple's minimum touch target) and 16px text, below which
   // iOS Safari zooms the page when the field is focused.
   const inputClass = [
-    "h-11 w-full rounded-full border border-background-focus bg-background-card px-4 text-base text-foreground transition-colors placeholder:text-label-secondary/70 focus:border-brand focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50",
+    "h-11 w-full rounded-full border border-background-focus bg-background-card px-4 text-base text-foreground transition-colors placeholder:text-label-secondary/70 focus-visible:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50",
     isPassword ? "pr-12" : "",
     // indent offsets the trailing letter-spacing so the digits stay optically centered.
     props.code ? "text-center text-xl tracking-[0.5em] indent-[0.5em] placeholder:tracking-[0.5em]" : "",
@@ -85,7 +85,7 @@ export default function Input(props: Props) {
             onClick={() => setVisible(!visible)}
             aria-label={visible ? "Hide password" : "Show password"}
             aria-pressed={visible}
-            className="absolute right-0 top-0 flex size-11 items-center justify-center rounded-full text-label-secondary transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-brand">
+            className="absolute right-0 top-0 flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent">
             {
               visible ?
                 <IconEyeOff

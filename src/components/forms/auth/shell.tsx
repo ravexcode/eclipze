@@ -15,7 +15,7 @@ export default function AuthShell({ title, description, backHref = "/", children
     <div
       className="relative flex min-h-dvh w-full items-center justify-center px-5 pt-20 pb-16">
       <Link
-        className="absolute left-2 top-2 flex min-h-11 items-center gap-1.5 rounded-full px-3 font-heading text-base text-foreground transition-colors duration-200 hover:text-foreground-off focus-visible:ring-1 focus-visible:ring-brand"
+        className="absolute left-2 top-2 flex min-h-11 items-center gap-1.5 rounded-full px-3 font-heading text-base text-foreground transition-colors duration-200 hover:text-foreground-off focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent"
         href={backHref}>
         <IconArrowLeft
           size={18} />
