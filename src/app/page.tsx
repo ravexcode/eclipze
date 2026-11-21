@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import MarketingLayout from "@/components/layouts/marketing";
+import Showcase from "@/components/marketing/showcase";
 import RevealOnView from "@/components/ui/reveal-on-view";
 
 import { getCurrentSession } from "@/lib/auth";
@@ -14,110 +15,41 @@ export default async function HomePage() {
 
   return (
     <MarketingLayout hasToken={hasToken}>
-      <Image
-        src="/images/background.webp"
-        alt="Landing background"
-        width={1672}
-        height={941}
-        loading="eager"
-        className="absolute top-0 left-0 w-full h-max bg-cover contrast-125 brightness-75 animate-fade-in" />
-
-      <section className="mx-auto w-full max-w-7xl overflow-hidden p-10 gap-10 flex flex-col items-center justify-between relative">
+      <section
+        className="relative flex h-dvh min-h-120 w-full items-center justify-center overflow-hidden">
+        {/* Opacity lives on the wrapper: animate-fade-in ends at opacity 1. */}
         <div
-          className="w-full animate-fade-in-up">
-          <p
-            className="w-full text-7xl text-center font-heading font-bold animate-blurred-fade-in">
-            The app built <br />
-            for your agents <br />
-            <span
-              className="text-accent">
-              Workflow
-            </span>
-          </p>
+          className="absolute inset-0 opacity-80">
+          <Image
+            src="/marketing.webp"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover animate-fade-in" />
         </div>
 
-        <Image
-          src="/images/marketing_dashboard.webp"
-          className="w-full rounded-md animate-fade-in-up animate-duration-700"
-          alt="Marketing dashboard"
-          width={1336}
-          height={910}
-          loading="eager" />
+        <div
+          className="relative flex max-w-300 flex-col items-center gap-1.5 px-4 text-center animate-fade-in-up">
+          <h1
+            className="bg-linear-to-r from-foreground-off via-foreground to-foreground bg-clip-text pb-1 font-heading text-4xl font-bold tracking-[-0.01em] text-transparent animate-blurred-fade-in sm:text-5xl md:text-[64px]">
+            Build beyond limits
+          </h1>
+          <p
+            className="max-w-135 font-heading text-lg italic tracking-[-0.01em] text-foreground sm:text-base">
+            Empower your teams to move faster, execute smarter, and scale without limits.
+          </p>
+        </div>
       </section>
 
       <section
-        className="flex flex-col items-center justify-center gap-2 p-10 w-full max-w-6xl mx-auto mt-50 animate-fade-in-up">
+        className="mx-auto flex w-full max-w-300 items-center justify-center px-5 py-20 my-50">
         <RevealOnView
           className="w-full"
           enterThreshold={0.2}
           exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="text-3xl font-sembibold w-full text-start">
-            Work with Agents
-          </p>
-        </RevealOnView>
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="w-full font-medium text-start text-base mb-10 text-foreground-off">
-            Add skills, projects, Github repositories for context. And create issues, fix them, check your inbox and even MCP connections.
-          </p>
-        </RevealOnView>
-
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <Image
-            src="/images/agents.webp"
-            className="w-full rounded-md animate-fade-in-up animate-duration-700"
-            alt="Marketing agents page"
-            width={1336}
-            height={910}
-            loading="eager" />
-        </RevealOnView>
-      </section>
-
-      <section
-        className="flex flex-col items-center justify-center gap-2 p-10 w-full max-w-6xl mx-auto animate-fade-in-up">
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="text-3xl font-sembibold w-full text-start">
-            Organize your projects
-          </p>
-        </RevealOnView>
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <p
-            className="w-full font-medium text-start text-base mb-10 text-foreground-off">
-            Create, delete and edit your projects to work with them.
-          </p>
-        </RevealOnView>
-
-        <RevealOnView
-          className="w-full"
-          enterThreshold={0.2}
-          exitThreshold={0.2}
-          animation="animate-blurred-fade-in">
-          <Image
-            src="/images/projects.webp"
-            className="w-full rounded-md animate-fade-in-up animate-duration-700"
-            alt="Marketing projects page"
-            width={1336}
-            height={910}
-            loading="eager" />
+          animation="animate-fade-in-up">
+          <Showcase />
         </RevealOnView>
       </section>
     </MarketingLayout>

@@ -11,13 +11,14 @@ import type {
 
 import Form from "@/components/forms/auth/form";
 import Input from "@/components/forms/auth/input";
+import AuthProviders from "@/components/forms/auth/providers";
+import AuthShell from "@/components/forms/auth/shell";
 import Button from "@/components/ui/button";
 import { useAnnouncements } from "@/components/announcements/announcement-provider";
 import { apiFetch } from "@/utils/api-fetch";
 import { invalidateSessionUser } from "@/utils/session";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconArrowLeft, IconBrandGoogleFilled } from "@tabler/icons-react";
 
 export default function AuthPage(
   { type, initialError = null }:
@@ -39,10 +40,10 @@ export default function AuthPage(
 
   const greeting = useMemo(() => {
     if (step === "verify_email") {
-      return "Verify your email";
+      return "Confirm your email";
     }
 
-    return type === "in" ? "Welcome back!" : "Get started";
+    return type === "in" ? "Welcome Back!" : "Get started";
   }, [step, type]);
 
   const onSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -54,11 +55,6 @@ export default function AuthPage(
 
     try {
       if (step === "credentials") {
-        if (type === "up") {
-          setError("You must accept the terms and privacy policy to create an account.");
-          return;
-        }
-
         const endpoint = type === "in" ? "/api/auth/signin" : "/api/auth/signup";
         const response = await apiFetch(endpoint, {
           method: "POST",
@@ -115,6 +111,8 @@ export default function AuthPage(
       router.refresh();
     } catch {
       setError("Unable to complete your request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -154,77 +152,62 @@ export default function AuthPage(
     }
   };
 
-  return (
-    <div
-      className="relative flex min-h-dvh w-full items-center justify-center px-5 py-16">
-      <Link
-        className="absolute left-5 top-5 flex items-center justify-center gap-1 rounded-md px-3 py-1.5 text-foreground-off hover:text-foreground focus-visible:ring-1 focus-visible:ring-accent sm:left-8 sm:top-8 text-xs transition-colors duration-200"
-        href="/">
-        <IconArrowLeft
-          size={17} />
-        <p>
-          Go back
-        </p>
-      </Link>
 
+  const updateUser = (field: keyof UserCredentials) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setUser(prev => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  const linkClass = "text-foreground underline underline-offset-2 transition-colors duration-300 hover:text-brand";
+  // Standalone links get a 44px-tall hit area; inline ones stay in the text flow.
+  const standaloneLinkClass = `inline-flex min-h-11 items-center px-2 ${linkClass}`;
+
+  return (
+    <AuthShell
+      title={greeting}
+      description={step !== "credentials" && <>
+        We&apos;ve sent you an email with a code, put it there
+        <br />
+        <span className="text-foreground">{pendingEmail || user.email}</span>
+      </>}>
       <Form
         onSubmit={onSubmit}
         onError={onError}>
-
-        <h1 className="font-base text-2xl font-medium mb-3">{greeting}</h1>
-
         {
           step === "credentials" ? (
             type === "in" ? <>
               <Input
                 value={user.email}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      email: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Insert your email"
+                onChange={updateUser("email")}
+                label="Email"
+                enterKeyHint="next"
                 type="email"
-                placeholder="eclipze@mail.com"
+                placeholder="jhondoe@gmail.com"
                 autoComplete="email"
                 required
               />
 
               <Input
                 value={user.password}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      password: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Insert your password"
+                onChange={updateUser("password")}
+                label="Password"
+                enterKeyHint="go"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="current-password"
                 minLength={8}
                 required
               />
-
             </> : <>
               <Input
-                value={user.username!}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      username: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Create a username"
+                value={user.username ?? ""}
+                onChange={updateUser("username")}
+                label="Username"
+                enterKeyHint="next"
+                autoCapitalize="none"
+                spellCheck={false}
                 type="text"
-                placeholder="Eclipze"
+                placeholder="Jhon Doe"
                 autoComplete="username"
                 minLength={3}
                 maxLength={24}
@@ -233,32 +216,20 @@ export default function AuthPage(
 
               <Input
                 value={user.email}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      email: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Insert your email"
+                onChange={updateUser("email")}
+                label="Email"
+                enterKeyHint="next"
                 type="email"
-                placeholder="eclipze@mail.com"
+                placeholder="jhondoe@gmail.com"
                 autoComplete="email"
                 required
               />
 
               <Input
                 value={user.password}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      password: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Insert your password"
+                onChange={updateUser("password")}
+                label="Password"
+                enterKeyHint="next"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="new-password"
@@ -267,16 +238,10 @@ export default function AuthPage(
               />
 
               <Input
-                value={user.password_confirm!}
-                onChange={(e) => {
-                  setUser(
-                    prev => prev ? {
-                      ...prev,
-                      password_confirm: e.target.value,
-                    } : prev,
-                  );
-                }}
-                label="Confirm your password"
+                value={user.password_confirm ?? ""}
+                onChange={updateUser("password_confirm")}
+                label="Confirm password"
+                enterKeyHint="go"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="new-password"
@@ -285,35 +250,30 @@ export default function AuthPage(
               />
             </>
           ) : (
-            <>
-              <p className="mb-2 text-center leading-6 text-foreground-off">
-                {step === "verify_email"
-                  ? "Enter the 6-digit code we sent to verify your email address."
-                  : "Enter the 6-digit code we sent to finish signing you in."}
-                <br />
-                <span className="text-foreground">{pendingEmail || user.email}</span>
-              </p>
-
-              <Input
-                value={verificationCode}
-                onChange={(e) => {
-                  setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
-                }}
-                label="Verification code"
-                type="text"
-                placeholder="123456"
-                pattern="[0-9]{6}"
-                autoComplete="one-time-code"
-                maxLength={6}
-                required
-              />
-            </>
+            <Input
+              value={verificationCode}
+              onChange={(e) => {
+                setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+              }}
+              label="Verification code"
+              hideLabel
+              code
+              enterKeyHint="done"
+              type="text"
+              inputMode="numeric"
+              placeholder="XXXXXX"
+              pattern="[0-9]{6}"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+            />
           )
         }
 
         {
           error &&
-          <p className="w-full rounded-md border border-alert-red/40 bg-alert-red/10 px-3 py-2.5 leading-6 text-red-200">
+          <p role="alert"
+            className="w-full rounded-2xl border border-alert-red/40 bg-alert-red/10 px-4 py-3 text-sm leading-5 text-red-200">
             {error}
             {errorAction && <Link className="ml-2 underline" href={errorAction.href}>{errorAction.label}</Link>}
           </p>
@@ -321,82 +281,70 @@ export default function AuthPage(
 
         <Button
           type="submit"
-          variant="main"
+          variant="brand"
           disabled={isSubmitting}
-          className="my-3 h-10 min-h-0 w-full cursor-pointer rounded-md text-xs">
-          {isSubmitting ? "Please wait..." : step === "credentials" ? "Continue" : "Verify code"}
+          className="mt-2 h-11 min-h-0 w-full cursor-pointer rounded-full! text-base! font-medium">
+          {isSubmitting ? "Please wait..." : step === "credentials" ? "Continue" : "Confirm"}
         </Button>
 
         {
-          step !== "credentials" &&
-          <div className="flex w-full items-center justify-between gap-3 text-foreground-off">
-            <button
-              type="button"
-              onClick={() => {
-                setStep("credentials");
-                setVerificationCode("");
-                setError(null);
-              }}
-              className="underline hover:text-accent transition-colors duration-300 cursor-pointer">
-              Go back
-            </button>
+          step === "credentials" ? <>
+            <AuthProviders />
 
-            <button
-              type="button"
-              onClick={resendCode}
-              disabled={isSubmitting}
-              className="underline hover:text-accent transition-colors duration-300 cursor-pointer disabled:opacity-50">
-              Resend code
-            </button>
-          </div>
-        }
+            <div
+              className="flex w-full flex-col items-center gap-1 text-center text-[13px] leading-5 text-balance text-label-secondary">
+              <p>
+                By signing {type} you accept our <Link
+                  href="/legal/tos"
+                  className={linkClass}>
+                  Terms of Service
+                </Link> and <Link
+                  href="/legal/privacy"
+                  className={linkClass}>
+                  Privacy Policy
+                </Link>
+              </p>
 
-        {
-          step === "credentials" && type === "in" &&
-          <Link href="/auth/forgot-password" className="text-xs text-foreground-off underline hover:text-accent transition-colors duration-300">Forgot your password?</Link>
-        }
+              {
+                type === "in" &&
+                <Link
+                  href="/auth/forgot-password"
+                  className={standaloneLinkClass}>
+                  Forgot your password?
+                </Link>
+              }
 
-        {
-          step === "credentials" &&
-          <p
-            className="w-full text-center text-foreground-off text-xs">
-            By signin {type} you accept our <Link
-              href="/legal/tos"
-              className="hover:text-accent transition-colors duration-300 underline">
-              Terms of service
-            </Link> and <Link
-              href="/legal/privacy"
-              className="hover:text-accent transition-colors duration-300 underline">
-              Privacy policy
-            </Link>
-          </p>
-        }
+              <p>
+                {type === "in" ? "Don't have an account?" : "Already have an account?"} <Link
+                  href={type === "in" ? "/auth/signup" : "/auth/signin"}
+                  className={linkClass}>
+                  {type === "in" ? "Sign up" : "Sign in"}
+                </Link>
+              </p>
+            </div>
+          </> :
+            <div className="flex w-full items-center justify-between gap-3 text-[15px] text-label-secondary">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("credentials");
+                  setVerificationCode("");
+                  setError(null);
+                }}
+                className="min-h-11 px-2 underline underline-offset-2 transition-colors duration-300 hover:text-foreground cursor-pointer">
+                Change email
+              </button>
 
-        {
-          step === "credentials" &&
-          <p
-            className="w-full text-center text-foreground-off text-xs">
-            {type === "in" ? "Don't have an account?" : "Already have an account?"} <Link
-              href={type === "in" ? "/auth/signup" : "/auth/signin"}
-              className="hover:text-accent transition-colors duration-300 underline">
-              {type === "in" ? "Sign up" : "Sign in"}
-            </Link>
-          </p>
-        }
-
-        {
-          step === "credentials" &&
-          <a
-            href="/api/auth/google"
-            className="flex gap-1 items-center justify-center w-full p-3 mt-3 bg-background-card rounded-md cursor-pointer hover:bg-background-focus/50 duration-200">
-            <IconBrandGoogleFilled
-              size={14}
-              stroke={1.5} />
-
-            Continue with Google
-          </a>
+              <button
+                type="button"
+                onClick={resendCode}
+                disabled={isSubmitting}
+                className="min-h-11 px-2 underline underline-offset-2 transition-colors duration-300 hover:text-foreground cursor-pointer disabled:opacity-50">
+                Resend code
+              </button>
+            </div>
         }
       </Form>
-    </div>
+    </AuthShell>
   );
 }

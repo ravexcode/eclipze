@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
 
-type ButtonVariant = "main" | "secondary" | "ghost";
+type ButtonVariant = "main" | "brand" | "secondary" | "ghost";
 
 interface ButtonElementProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -25,6 +25,7 @@ const baseStyles =
 
 const variantStyles: Record<ButtonVariant, string> = {
   main: "bg-accent text-foreground hover:brightness-150",
+  brand: "bg-brand text-foreground hover:brightness-125",
   secondary:
     "border border-background-focus bg-background-card text-foreground hover:bg-background-focus",
   ghost:

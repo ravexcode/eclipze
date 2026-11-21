@@ -5,7 +5,7 @@ export default function NotAuthorizedPage() {
   return (
     <MarketingLayout>
       <div
-        className="w-full h-full flex flex-col items-center justify-center gap-2 p-10">
+        className="w-full flex-1 flex flex-col items-center justify-center gap-2 p-10 pt-24">
         <p
           className="font-medium text-lg text-center w-full font-heading">
           Not authorized
