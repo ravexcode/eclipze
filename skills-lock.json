@@ -1,29 +1,43 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "cybersecurity-analyst": {
       "source": "rysweet/amplihack",
       "sourceType": "github",
       "skillPath": "skills/cybersecurity-analyst/SKILL.md",
-      "computedHash": "4f804565a002629ad80e311b460d710783af11bfddda5ddecee18c4b8f54cc0e"
+      "computedHash": "7bf8b33e8530e7ee1dba2075b1497ec1092aef5261cd57ac82219a21a6dd43c3"
     },
     "optimizing-database-connection-pooling": {
       "source": "jeremylongshore/tons-of-skills-marketplace",
       "sourceType": "github",
       "skillPath": "skills/.curated/optimizing-database-connection-pooling/SKILL.md",
-      "computedHash": "9b8bce51ba34fe25b31102e8db653570fd868ded62314eb1936cfa2c21e561dc"
+      "computedHash": "f07a967951cdf9e25331cecc30df81e4c830b5258f2392f3e51d142d804d0c4e"
     },
     "prisma-query-optimizer": {
       "source": "nembie/claude-code-skills",
       "sourceType": "github",
       "skillPath": "skills/prisma-query-optimizer/SKILL.md",
-      "computedHash": "335505a1a5a8f33c445f076dd93d43d796dd595e3c117bd4769d34c8141b57c8"
+      "computedHash": "dceae92815fb127dcf9f400499912bfdabf937965ae10ece722f9f48a5ad4651"
     },
     "sql-performance": {
       "source": "bateau84/skills",
       "sourceType": "github",
       "skillPath": "skills/sql-performance/SKILL.md",
-      "computedHash": "f89040795c84c5caba44f818d2c059b2ce166ac5bda0439909e239e3c6534133"
+      "computedHash": "db1cd4858fc1a6a8b76dd517ab38e196276233a337d550f54b3ec85de76ddd1c"
+    },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "2fbff32fd63b7d31585cacf0ed43e5bf8d05dd20d6c0c751d256cb967a00eec1"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "3eb972c2d7c818e544e35cc33ea8d7147d4d78ae08142ef40037b0fbac7a2505"
     }
   }
 }
