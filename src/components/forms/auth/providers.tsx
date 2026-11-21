@@ -12,9 +12,9 @@ const PROVIDERS = [
 export default function AuthProviders() {
   return (
     <div
-      className="flex w-full flex-col gap-3">
+      className="flex w-full flex-col gap-4">
       <div
-        className="flex w-full items-center gap-2 text-xs text-foreground-off"
+        className="flex w-full items-center gap-3 text-[13px] text-label-secondary"
         aria-hidden="true">
         <span className="h-px flex-1 bg-foreground-off/60" />
         OR
@@ -22,16 +22,16 @@ export default function AuthProviders() {
       </div>
 
       <div
-        className="flex w-full flex-col gap-2">
+        className="flex w-full flex-col gap-3">
         {
           PROVIDERS.map(({ href, label, Icon }) => (
             // Plain anchors: these routes redirect to the provider, so no client routing.
             <a
               key={href}
               href={href}
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-full border border-background-focus bg-background-card text-xs text-foreground transition-colors duration-200 hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-brand">
+              className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-background-focus bg-background-card text-base font-medium text-foreground transition-colors duration-200 hover:bg-background-focus focus-visible:ring-1 focus-visible:ring-brand">
               <Icon
-                size={15}
+                size={18}
                 stroke={1.75} />
               {label}
             </a>

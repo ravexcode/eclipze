@@ -13,17 +13,17 @@ interface Props {
 export default function AuthShell({ title, description, backHref = "/", children }: Props) {
   return (
     <div
-      className="relative flex min-h-dvh w-full items-center justify-center px-5 py-16">
+      className="relative flex min-h-dvh w-full items-center justify-center px-5 pt-20 pb-16">
       <Link
-        className="absolute left-4 top-4 flex items-center gap-1.5 rounded-md px-1 py-0.5 font-heading text-sm text-foreground transition-colors duration-200 hover:text-foreground-off focus-visible:ring-1 focus-visible:ring-brand"
+        className="absolute left-2 top-2 flex min-h-11 items-center gap-1.5 rounded-full px-3 font-heading text-base text-foreground transition-colors duration-200 hover:text-foreground-off focus-visible:ring-1 focus-visible:ring-brand"
         href={backHref}>
         <IconArrowLeft
-          size={16} />
+          size={18} />
         Go back
       </Link>
 
       <div
-        className="flex w-full max-w-md flex-col items-center gap-5">
+        className="flex w-full max-w-md flex-col items-center gap-6">
         <div
           className="flex w-full flex-col items-center gap-3 text-center">
           <h1
@@ -33,7 +33,7 @@ export default function AuthShell({ title, description, backHref = "/", children
           {
             description &&
             <p
-              className="max-w-72 text-[11px] leading-5 text-foreground-off">
+              className="max-w-90 text-[15px] leading-6 text-label-secondary">
               {description}
             </p>
           }

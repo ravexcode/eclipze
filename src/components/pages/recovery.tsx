@@ -11,7 +11,7 @@ import Button from "@/components/ui/button";
 import { apiFetch } from "@/utils/api-fetch";
 
 function FormError({ message }: { message: string }) {
-  return message ? <p className="w-full rounded-2xl border border-alert-red/40 bg-alert-red/10 px-3 py-2.5 text-xs leading-6 text-red-200">{message}</p> : null;
+  return message ? <p role="alert" className="w-full rounded-2xl border border-alert-red/40 bg-alert-red/10 px-4 py-3 text-sm leading-5 text-red-200">{message}</p> : null;
 }
 
 export function ForgotPasswordPage() {
@@ -35,15 +35,15 @@ export function ForgotPasswordPage() {
   return (
     <AuthShell title="Reset your password" backHref="/auth/signin" description={sent ? undefined : "Insert your email so we can send you a verification code"}>
       {sent ? (
-        <p className="text-center text-xs leading-6 text-foreground-off">
+        <p className="max-w-90 text-center text-[15px] leading-6 text-label-secondary">
           If an eligible account exists, a reset code was sent. {" "}
           <Link className="text-brand underline" href={`/auth/reset-password?email=${encodeURIComponent(email)}`}>Continue with code</Link>.
         </p>
       ) : (
         <Form onSubmit={submit} onError={(event) => { event.preventDefault(); setError("Please review the form fields and try again."); }}>
-          <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" hideLabel type="email" placeholder="jhondoe@gmail.com" autoComplete="email" required />
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" hideLabel type="email" placeholder="jhondoe@gmail.com" autoComplete="email" enterKeyHint="go" required />
           <FormError message={error} />
-        <Button type="submit" variant="brand" disabled={busy} className="mt-2.5 h-9 min-h-0 w-full rounded-full! text-xs font-normal">{busy ? "Please wait..." : "Continue"}</Button>
+        <Button type="submit" variant="brand" disabled={busy} className="mt-2 h-11 min-h-0 w-full rounded-full! text-base! font-medium">{busy ? "Please wait..." : "Continue"}</Button>
         </Form>
       )}
     </AuthShell>
@@ -72,12 +72,12 @@ export function ResetPasswordPage({ initialEmail = "" }: { initialEmail?: string
   return (
     <AuthShell title="Choose a new password" backHref="/auth/signin" description="Enter the code we sent to your email and your new password">
       <Form onSubmit={submit} onError={(event) => { event.preventDefault(); setError("Please review the form fields and try again."); }}>
-        <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" type="email" placeholder="jhondoe@gmail.com" autoComplete="email" required />
-        <Input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} label="6-digit code" type="text" inputMode="numeric" placeholder="XXXXXX" autoComplete="one-time-code" maxLength={6} required />
-        <Input value={password} onChange={(event) => setPassword(event.target.value)} label="New password" type="password" placeholder="••••••••••" autoComplete="new-password" minLength={8} required />
-        <Input value={confirm} onChange={(event) => setConfirm(event.target.value)} label="Confirm password" type="password" placeholder="••••••••••" autoComplete="new-password" minLength={8} required />
+        <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" type="email" placeholder="jhondoe@gmail.com" autoComplete="email" enterKeyHint="next" required />
+        <Input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} label="6-digit code" code type="text" inputMode="numeric" placeholder="XXXXXX" autoComplete="one-time-code" enterKeyHint="next" maxLength={6} required />
+        <Input value={password} onChange={(event) => setPassword(event.target.value)} label="New password" type="password" placeholder="••••••••••" autoComplete="new-password" enterKeyHint="next" minLength={8} required />
+        <Input value={confirm} onChange={(event) => setConfirm(event.target.value)} label="Confirm password" type="password" placeholder="••••••••••" autoComplete="new-password" enterKeyHint="go" minLength={8} required />
         <FormError message={error} />
-        <Button type="submit" variant="brand" disabled={busy} className="mt-2.5 h-9 min-h-0 w-full rounded-full! text-xs font-normal">{busy ? "Please wait..." : "Continue"}</Button>
+        <Button type="submit" variant="brand" disabled={busy} className="mt-2 h-11 min-h-0 w-full rounded-full! text-base! font-medium">{busy ? "Please wait..." : "Continue"}</Button>
       </Form>
     </AuthShell>
   );
@@ -113,12 +113,12 @@ export function VerifyEmailPage() {
   return (
     <AuthShell title="Confirm your email" backHref="/auth/signin" description="We've sent you an email with a code, put it there">
       <Form onSubmit={submit} onError={(event) => event.preventDefault()}>
-        <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" type="email" placeholder="jhondoe@gmail.com" autoComplete="email" required />
-        <Input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} label="6-digit code" type="text" inputMode="numeric" placeholder="XXXXXX" autoComplete="one-time-code" maxLength={6} required />
+        <Input value={email} onChange={(event) => setEmail(event.target.value)} label="Email" type="email" placeholder="jhondoe@gmail.com" autoComplete="email" enterKeyHint="next" required />
+        <Input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} label="6-digit code" code type="text" inputMode="numeric" placeholder="XXXXXX" autoComplete="one-time-code" enterKeyHint="go" maxLength={6} required />
         <FormError message={error} />
-        {message && !error && <p className="w-full text-xs leading-6 text-foreground-off">{message}</p>}
-        <Button type="submit" variant="brand" disabled={busy} className="mt-2.5 h-9 min-h-0 w-full rounded-full! text-xs font-normal">{busy ? "Please wait..." : "Confirm"}</Button>
-        <button type="button" onClick={resend} disabled={busy} className="mt-1 text-xs text-foreground-off underline transition-colors hover:text-foreground disabled:opacity-50">Resend code</button>
+        {message && !error && <p className="w-full text-sm leading-5 text-label-secondary">{message}</p>}
+        <Button type="submit" variant="brand" disabled={busy} className="mt-2 h-11 min-h-0 w-full rounded-full! text-base! font-medium">{busy ? "Please wait..." : "Confirm"}</Button>
+        <button type="button" onClick={resend} disabled={busy} className="min-h-11 px-2 text-[15px] text-label-secondary underline underline-offset-2 transition-colors hover:text-foreground disabled:opacity-50">Resend code</button>
       </Form>
     </AuthShell>
   );

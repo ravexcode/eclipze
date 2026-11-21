@@ -158,7 +158,9 @@ export default function AuthPage(
     setUser(prev => prev ? { ...prev, [field]: value } : prev);
   };
 
-  const linkClass = "text-brand underline transition-colors duration-300 hover:text-foreground";
+  const linkClass = "text-foreground underline underline-offset-2 transition-colors duration-300 hover:text-brand";
+  // Standalone links get a 44px-tall hit area; inline ones stay in the text flow.
+  const standaloneLinkClass = `inline-flex min-h-11 items-center px-2 ${linkClass}`;
 
   return (
     <AuthShell
@@ -178,6 +180,7 @@ export default function AuthPage(
                 value={user.email}
                 onChange={updateUser("email")}
                 label="Email"
+                enterKeyHint="next"
                 type="email"
                 placeholder="jhondoe@gmail.com"
                 autoComplete="email"
@@ -188,6 +191,7 @@ export default function AuthPage(
                 value={user.password}
                 onChange={updateUser("password")}
                 label="Password"
+                enterKeyHint="go"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="current-password"
@@ -199,6 +203,9 @@ export default function AuthPage(
                 value={user.username ?? ""}
                 onChange={updateUser("username")}
                 label="Username"
+                enterKeyHint="next"
+                autoCapitalize="none"
+                spellCheck={false}
                 type="text"
                 placeholder="Jhon Doe"
                 autoComplete="username"
@@ -211,6 +218,7 @@ export default function AuthPage(
                 value={user.email}
                 onChange={updateUser("email")}
                 label="Email"
+                enterKeyHint="next"
                 type="email"
                 placeholder="jhondoe@gmail.com"
                 autoComplete="email"
@@ -221,6 +229,7 @@ export default function AuthPage(
                 value={user.password}
                 onChange={updateUser("password")}
                 label="Password"
+                enterKeyHint="next"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="new-password"
@@ -232,6 +241,7 @@ export default function AuthPage(
                 value={user.password_confirm ?? ""}
                 onChange={updateUser("password_confirm")}
                 label="Confirm password"
+                enterKeyHint="go"
                 type="password"
                 placeholder="••••••••••"
                 autoComplete="new-password"
@@ -247,7 +257,8 @@ export default function AuthPage(
               }}
               label="Verification code"
               hideLabel
-              centered
+              code
+              enterKeyHint="done"
               type="text"
               inputMode="numeric"
               placeholder="XXXXXX"
@@ -261,7 +272,8 @@ export default function AuthPage(
 
         {
           error &&
-          <p className="w-full rounded-2xl border border-alert-red/40 bg-alert-red/10 px-3 py-2.5 text-xs leading-5 text-red-200">
+          <p role="alert"
+            className="w-full rounded-2xl border border-alert-red/40 bg-alert-red/10 px-4 py-3 text-sm leading-5 text-red-200">
             {error}
             {errorAction && <Link className="ml-2 underline" href={errorAction.href}>{errorAction.label}</Link>}
           </p>
@@ -271,7 +283,7 @@ export default function AuthPage(
           type="submit"
           variant="brand"
           disabled={isSubmitting}
-          className="mt-2.5 h-9 min-h-0 w-full cursor-pointer rounded-full! text-xs font-normal">
+          className="mt-2 h-11 min-h-0 w-full cursor-pointer rounded-full! text-base! font-medium">
           {isSubmitting ? "Please wait..." : step === "credentials" ? "Continue" : "Confirm"}
         </Button>
 
@@ -280,7 +292,7 @@ export default function AuthPage(
             <AuthProviders />
 
             <div
-              className="mt-2 flex w-full flex-col items-center gap-1.5 text-center text-[11px] text-balance text-foreground">
+              className="flex w-full flex-col items-center gap-1 text-center text-[13px] leading-5 text-balance text-label-secondary">
               <p>
                 By signing {type} you accept our <Link
                   href="/legal/tos"
@@ -297,7 +309,7 @@ export default function AuthPage(
                 type === "in" &&
                 <Link
                   href="/auth/forgot-password"
-                  className={linkClass}>
+                  className={standaloneLinkClass}>
                   Forgot your password?
                 </Link>
               }
@@ -311,7 +323,7 @@ export default function AuthPage(
               </p>
             </div>
           </> :
-            <div className="flex w-full items-center justify-between gap-3 text-xs text-foreground-off">
+            <div className="flex w-full items-center justify-between gap-3 text-[15px] text-label-secondary">
               <button
                 type="button"
                 onClick={() => {
@@ -319,7 +331,7 @@ export default function AuthPage(
                   setVerificationCode("");
                   setError(null);
                 }}
-                className="underline transition-colors duration-300 hover:text-foreground cursor-pointer">
+                className="min-h-11 px-2 underline underline-offset-2 transition-colors duration-300 hover:text-foreground cursor-pointer">
                 Change email
               </button>
 
@@ -327,7 +339,7 @@ export default function AuthPage(
                 type="button"
                 onClick={resendCode}
                 disabled={isSubmitting}
-                className="underline transition-colors duration-300 hover:text-foreground cursor-pointer disabled:opacity-50">
+                className="min-h-11 px-2 underline underline-offset-2 transition-colors duration-300 hover:text-foreground cursor-pointer disabled:opacity-50">
                 Resend code
               </button>
             </div>
