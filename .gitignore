@@ -38,3 +38,6 @@ scripts/
 .atl/
 .codegraph/
 odd/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
